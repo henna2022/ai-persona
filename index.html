@@ -129,6 +129,7 @@ function newLook() {
     face: pick(FACES), eyeL: pick(EYES), eyeR: pick(EYES), browL: pick(BROWS), browR: pick(BROWS),
     nose: pick(NOSES), mouth: pick(MOUTHS), neutral: pick(['heart', 'crown']),
     eyeSzL: rnd(0.65, 1.45), eyeSzR: rnd(0.65, 1.45),   // 눈 크기 좌우 비대칭
+    noseSz: rnd(0.7, 1.35),                               // 코 크기
     jit: Array.from({ length: 48 }, () => rnd(0.88, 1.12)),
   };
 }
@@ -195,7 +196,9 @@ function drawBrow(c, type, ids, lift) {
 }
 
 function drawNose(c, g) {
-  const top = P(6), tip = P(2), nl = P(327), nr = P(98), nw = dist(nl, nr);
+  const nl = P(327), nr = P(98), k = look.noseSz, ctr = mid(P(6), P(2));
+  const sc = p => ({ x: ctr.x + (p.x - ctr.x) * k, y: ctr.y + (p.y - ctr.y) * k });   // 코 중심 기준 확대/축소
+  const top = sc(P(6)), tip = sc(P(2)), nw = dist(nl, nr) * k;
   switch (look.nose) {
     case 'line':     line(c, top, tip); break;
     case 'bar':      rect(c, tip.x - nw * 0.14, top.y, nw * 0.28, tip.y - top.y); break;
