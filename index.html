@@ -129,6 +129,7 @@ function newLook() {
     face: pick(FACES), eyeL: pick(EYES), eyeR: pick(EYES), browL: pick(BROWS), browR: pick(BROWS),
     nose: pick(NOSES), mouth: pick(MOUTHS), neutral: pick(['heart', 'crown']),
     noseSz: rnd(0.7, 1.35), mouthSz: rnd(0.75, 1.4),       // 코, 입 크기
+    browSzL: rnd(0.7, 1.4), browSzR: rnd(0.7, 1.4),        // 눈썹 크기 좌우 따로
     jit: Array.from({ length: 48 }, () => rnd(0.88, 1.12)),
   };
   const big = rnd(1.2, 1.7), small = rnd(0.5, 0.8);      // 눈 크기: 한쪽은 크게, 한쪽은 작게
@@ -173,9 +174,10 @@ function drawEye(c, type, { x, y }, r) {
   }
 }
 
-function drawBrow(c, type, ids, lift) {
+function drawBrow(c, type, ids, lift, k) {
   if (type === 'none') return;
-  const pts = ids.map(P).map(p => ({ x: p.x, y: p.y - lift }));
+  const raw = ids.map(P), ctr = { x: raw.reduce((a, p) => a + p.x, 0) / raw.length, y: raw.reduce((a, p) => a + p.y, 0) / raw.length };
+  const pts = raw.map(p => ({ x: ctr.x + (p.x - ctr.x) * k, y: ctr.y + (p.y - ctr.y) * k - lift }));   // 눈썹 중심 기준 확대/축소
   const n = { zigzag: 26, scribble: 40, ticks: 16 }[type] || 14;   // 빽빽한 정도
   const out = [], segs = pts.slice(1).map((p, i) => dist(pts[i], p)), total = segs.reduce((a, b) => a + b, 0);
   for (let k = 0; k < n; k++) {                       // 눈썹 선 위에 점 n개 고르게 찍기
@@ -184,7 +186,7 @@ function drawBrow(c, type, ids, lift) {
     const t = segs[i] ? d / segs[i] : 0;
     out.push({ x: pts[i].x + (pts[i + 1].x - pts[i].x) * t, y: pts[i].y + (pts[i + 1].y - pts[i].y) * t });
   }
-  const amp = lift * 0.6;
+  const amp = lift * 0.6 * k;
   switch (type) {
     case 'line':     line(c, pts[0], pts[pts.length - 1]); break;
     case 'arc':      c.beginPath(); c.moveTo(pts[0].x, pts[0].y); c.quadraticCurveTo(pts[2].x, pts[2].y - amp * 2.5, pts[4].x, pts[4].y); c.stroke(); break;
@@ -270,8 +272,8 @@ function mood() {
 function drawAll(c, kind) {
   const g = geom();
   drawFace(c, g);
-  drawBrow(c, look.browR, [70, 63, 105, 66, 107], g.h * 0.04);
-  drawBrow(c, look.browL, [336, 296, 334, 293, 300], g.h * 0.04);
+  drawBrow(c, look.browR, [70, 63, 105, 66, 107], g.h * 0.04, look.browSzR);
+  drawBrow(c, look.browL, [336, 296, 334, 293, 300], g.h * 0.04, look.browSzL);
   drawEye(c, look.eyeR, mid(P(33), P(133)), dist(P(33), P(133)) * 0.4 * look.eyeSzR);
   drawEye(c, look.eyeL, mid(P(362), P(263)), dist(P(362), P(263)) * 0.4 * look.eyeSzL);
   drawNose(c, g);
