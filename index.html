@@ -75,6 +75,7 @@ const debug = params.has('debug');
 const imgSrc = params.get('img');           // ?img=사진경로 → 카메라 대신 사진으로 테스트
 const video = $('cam'), canvas = $('view'), ctx = canvas.getContext('2d');
 const logo = new Image(); logo.src = 'logo.png';
+const title = new Image(); title.src = 'title.png';   // 완성본 상단 타이포 (없으면 생략)
 
 let landmarker, source, W, H, look, lm = null, running = false;
 const bs = {};                               // 부드럽게 만든 표정 수치
@@ -105,8 +106,6 @@ function geom() {
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0, top: P(10) };
 }
-
-function drawFrame(c, g) { const s = g.w * 2.3; c.save(); c.lineWidth *= 0.5; rect(c, g.cx - s / 2, g.cy - s * 0.58, s, s); c.restore(); }
 
 function drawFace(c, { cx, cy, w, h }) {
   switch (look.face) {
@@ -167,15 +166,16 @@ function drawNose(c, g) {
 }
 
 function drawMouth(c, g) {
-  const l = P(61), r = P(291), { x, y } = mid(P(13), P(14));
-  const mw = dist(l, r) * 1.1, mh = Math.max(dist(P(0), P(17)), mw * 0.35);
+  const { x, y } = mid(P(13), P(14));
+  const mw = dist(P(61), P(291)) * 1.1, mh = Math.max(dist(P(0), P(17)) * 1.1, mw * 0.22);   // 입을 벌리면 mh가 커짐
+  const rx = mw / 2, ry = mh / 2;
   switch (look.mouth) {
-    case 'slot':   rect(c, x - mw / 2, y - mh / 2, mw, mh); rect(c, x - mw * 0.35, y - mh * 0.12, mw * 0.7, mh * 0.24); break;
-    case 'dashes': c.save(); c.setLineDash([mw * 0.08, mw * 0.06]); line(c, { x: x - mw / 2, y }, { x: x + mw / 2, y }); c.restore(); break;
-    case 'x':      line(c, { x: x - mw * 0.4, y: y - mh * 0.4 }, { x: x + mw * 0.4, y: y + mh * 0.4 }); line(c, { x: x - mw * 0.4, y: y + mh * 0.4 }, { x: x + mw * 0.4, y: y - mh * 0.4 }); line(c, { x: x - mw * 0.45, y }, { x: x + mw * 0.45, y: y + mh * 0.1 }); break;
-    case 'oval':   ellipse(c, x, y, mw * 0.5, mh * 0.5); line(c, { x: x - mw * 0.5, y }, { x: x + mw * 0.5, y }); break;
-    case 'teeth':  rect(c, x - mw / 2, y - mh * 0.35, mw, mh * 0.7); for (let k = -1; k <= 1; k++) line(c, { x: x + k * mw * 0.25, y: y - mh * 0.35 }, { x: x + k * mw * 0.25, y: y + mh * 0.35 }); break;
-    case 'dots':   for (let k = -2; k <= 2; k++) circle(c, x + k * mw * 0.2, y, g.w * 0.012, true); break;
+    case 'slot':   rect(c, x - rx, y - ry, mw, mh); rect(c, x - rx * 0.7, y - ry * 0.3, mw * 0.7, mh * 0.3); break;
+    case 'dashes': c.save(); c.setLineDash([mw * 0.08, mw * 0.06]); ellipse(c, x, y, rx, ry); c.restore(); break;
+    case 'x':      line(c, { x: x - rx, y: y - ry }, { x: x + rx, y: y + ry }); line(c, { x: x - rx, y: y + ry }, { x: x + rx, y: y - ry }); line(c, { x: x - rx * 0.9, y }, { x: x + rx * 0.9, y: y + ry * 0.2 }); break;
+    case 'oval':   ellipse(c, x, y, rx, ry); line(c, { x: x - rx, y }, { x: x + rx, y }); break;
+    case 'teeth':  rect(c, x - rx, y - ry, mw, mh); for (let k = -1; k <= 1; k++) line(c, { x: x + k * rx * 0.5, y: y - ry }, { x: x + k * rx * 0.5, y: y + ry }); break;
+    case 'dots':   for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; circle(c, x + Math.cos(a) * rx, y + Math.sin(a) * ry, g.w * 0.012, true); } break;
   }
 }
 
@@ -212,7 +212,6 @@ function mood() {
 
 function drawAll(c, kind) {
   const g = geom();
-  drawFrame(c, g);
   drawFace(c, g);
   drawBrow(c, look.browR, [70, 63, 105, 66, 107], g.h * 0.04);
   drawBrow(c, look.browL, [336, 296, 334, 293, 300], g.h * 0.04);
@@ -235,13 +234,19 @@ function render(c, live, kind) {
   c.lineWidth = W * 0.005; c.lineCap = c.lineJoin = 'round';
   if (lm) drawAll(c, kind);
   c.setTransform(1, 0, 0, 1, 0, 0);
-  if (!live) drawLogo(c);
+  if (!live) { drawLogo(c); drawTitle(c); }
   if (live && debug) {
     c.fillStyle = '#0f0'; c.font = '14px monospace';
     ['browDownLeft', 'browDownRight', 'mouthSmileLeft', 'mouthSmileRight', 'jawOpen', 'browInnerUp', 'eyeWideLeft', 'eyeWideRight']
       .forEach((n, i) => c.fillText(`${n} ${(bs[n] || 0).toFixed(2)}`, 8, 20 + i * 16));
     c.fillText('→ ' + kind, 8, 20 + 8 * 16);
   }
+}
+
+function drawTitle(c) {
+  if (!title.naturalWidth) return;
+  const cw = c.canvas.width, ch = c.canvas.height, tw = Math.min(cw * 0.5, ch * 0.1 * title.naturalWidth / title.naturalHeight);
+  c.drawImage(title, (cw - tw) / 2, ch * 0.04, tw, tw * title.naturalHeight / title.naturalWidth);
 }
 
 function drawLogo(c) {
