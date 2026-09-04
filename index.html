@@ -128,6 +128,7 @@ function newLook() {
   look = {
     face: pick(FACES), eyeL: pick(EYES), eyeR: pick(EYES), browL: pick(BROWS), browR: pick(BROWS),
     nose: pick(NOSES), mouth: pick(MOUTHS), neutral: pick(['heart', 'crown']),
+    eyeSzL: rnd(0.65, 1.45), eyeSzR: rnd(0.65, 1.45),   // 눈 크기 좌우 비대칭
     jit: Array.from({ length: 48 }, () => rnd(0.88, 1.12)),
   };
 }
@@ -267,8 +268,8 @@ function drawAll(c, kind) {
   drawFace(c, g);
   drawBrow(c, look.browR, [70, 63, 105, 66, 107], g.h * 0.04);
   drawBrow(c, look.browL, [336, 296, 334, 293, 300], g.h * 0.04);
-  drawEye(c, look.eyeR, mid(P(33), P(133)), dist(P(33), P(133)) * 0.4);
-  drawEye(c, look.eyeL, mid(P(362), P(263)), dist(P(362), P(263)) * 0.4);
+  drawEye(c, look.eyeR, mid(P(33), P(133)), dist(P(33), P(133)) * 0.4 * look.eyeSzR);
+  drawEye(c, look.eyeL, mid(P(362), P(263)), dist(P(362), P(263)) * 0.4 * look.eyeSzL);
   drawNose(c, g);
   drawMouth(c, g);
   drawIcon(c, kind, g.top.x, g.top.y - g.h * 0.22, g.w * 0.12);
