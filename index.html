@@ -128,10 +128,11 @@ function newLook() {
   look = {
     face: pick(FACES), eyeL: pick(EYES), eyeR: pick(EYES), browL: pick(BROWS), browR: pick(BROWS),
     nose: pick(NOSES), mouth: pick(MOUTHS), neutral: pick(['heart', 'crown']),
-    eyeSzL: rnd(0.65, 1.45), eyeSzR: rnd(0.65, 1.45),   // 눈 크기 좌우 비대칭
-    noseSz: rnd(0.7, 1.35),                               // 코 크기
+    noseSz: rnd(0.7, 1.35), mouthSz: rnd(0.75, 1.4),       // 코, 입 크기
     jit: Array.from({ length: 48 }, () => rnd(0.88, 1.12)),
   };
+  const big = rnd(1.2, 1.7), small = rnd(0.5, 0.8);      // 눈 크기: 한쪽은 크게, 한쪽은 작게
+  [look.eyeSzL, look.eyeSzR] = Math.random() < 0.5 ? [big, small] : [small, big];
 }
 
 // ---- 그리기 기본 ----
@@ -220,7 +221,7 @@ function bbox(pts) {
   return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
 }
 function drawMouth(c, g) {
-  const ctr = mid(P(13), P(14)), out = lip(LIP_OUT, 1.2, ctr), inn = lip(LIP_IN, 1.2, ctr);
+  const ctr = mid(P(13), P(14)), k = 1.2 * look.mouthSz, out = lip(LIP_OUT, k, ctr), inn = lip(LIP_IN, k, ctr);
   const o = bbox(out), i = bbox(inn); i.h = Math.max(i.h, o.h * 0.12);   // 다물면 얇은 틈
   switch (look.mouth) {
     case 'slot':   rect(c, o.x0, o.y0, o.w, o.h); rect(c, i.x0, i.cy - i.h / 2, i.w, i.h); break;
