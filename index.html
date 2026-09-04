@@ -11,6 +11,7 @@
   .screen.on { display: flex; }
   #start { align-items: center; justify-content: center; text-align: center; padding: 28px; gap: 22px; }
   #start h1 { font-size: 36px; }
+  #wordmark { width: min(78vw, 420px); }
   #start p { font-size: 16px; line-height: 1.55; color: #444; }
   #start small { font-size: 13px; color: #777; }
   button { font: inherit; font-weight: 700; border: 0; border-radius: 8px; padding: 16px 20px; cursor: pointer; touch-action: manipulation; }
@@ -23,13 +24,16 @@
   #hint.big { font-size: 120px; top: 30%; }
   .bar { display: flex; gap: 10px; padding: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0)); }
   .bar button { flex: 1; }
+  #gen { align-items: center; justify-content: center; font-size: 20px; font-weight: 700; text-align: center; padding: 24px; }
+  .dots::after { content: ''; animation: dots 1.2s steps(4) infinite; }
+  @keyframes dots { to { content: '...'; } }
   .note { padding: 8px 16px 0; text-align: center; font-size: 12px; color: #666; }
   #pic { flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #fff; }
 </style>
 </head>
 <body>
 <section id="start" class="screen on">
-  <h1>AI 페르소나</h1>
+  <img id="wordmark" src="title.png" alt="AI 페르소나" onerror="this.replaceWith(Object.assign(document.createElement('h1'), { textContent: 'AI 페르소나' }))">
   <p>카메라가 얼굴을 찾아서<br>눈, 코, 입을 도형으로 바꿔 그려요.<br>표정에 따라 머리 위 표시가 달라져요.</p>
   <button id="go" class="yellow" disabled>불러오는 중…</button>
   <small>카메라 영상은 이 기기 안에서만 처리되고<br>어디에도 전송되거나 저장되지 않아요.</small>
@@ -43,6 +47,10 @@
     <button id="shuffle" class="yellow">① 얼굴 고르기</button>
     <button id="shoot" class="dark">② 촬영</button>
   </div>
+</section>
+
+<section id="gen" class="screen">
+  <p>AI가 페르소나를 생성하고 있어요<span class="dots"></span></p>
 </section>
 
 <section id="result" class="screen">
@@ -278,6 +286,7 @@ async function shoot() {
   rc.width = Math.round(W * k); rc.height = Math.round(H * k);
   render(rc.getContext('2d'), false, mood());
   $('pic').src = rc.toDataURL('image/png');
+  show('gen'); await new Promise(r => setTimeout(r, 2000));   // 생성 중 안내 2초
   show('result');
 }
 
