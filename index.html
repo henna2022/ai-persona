@@ -34,7 +34,7 @@
 
   /* 카메라 */
   #cam { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-  .stage { position: relative; display: flex; flex: 1; min-height: 0; margin: 8px 16px 0; border-radius: 24px; overflow: hidden; background: #000; }
+  .stage { position: relative; display: flex; width: min(100% - 32px, 100vh - 200px); aspect-ratio: 1; margin: auto; border-radius: 24px; overflow: hidden; background: #000; }
   #view { flex: 1; min-height: 0; width: 100%; object-fit: cover; }
   #hint { position: absolute; top: 0; left: 0; right: 0; padding: 18px; text-align: center; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.5); font-size: 16px; font-weight: 600; pointer-events: none; }
   #hint.big { font-size: 120px; top: 35%; }
@@ -47,7 +47,7 @@
   @keyframes dots { to { content: '...'; } }
 
   /* 결과 */
-  .card { flex: 1; min-height: 0; display: flex; margin: 8px 16px 0; padding: 12px; border-radius: 24px; background: var(--surface); }
+  .card { display: flex; width: min(100% - 32px, 100vh - 240px); aspect-ratio: 1; margin: auto; padding: 12px; border-radius: 24px; background: var(--surface); }
   #pic { flex: 1; min-height: 0; width: 100%; object-fit: contain; border-radius: 16px; }
   .note { padding: 12px 24px 0; text-align: center; font-size: 13px; line-height: 1.5; color: var(--muted); }
 </style>
@@ -144,13 +144,13 @@ function geom() {
 
 function drawFace(c, { cx, cy, w, h }) {
   switch (look.face) {
-    case 'square':   rect(c, cx - w * 0.62, cy - h * 0.58, w * 1.24, h * 1.16); break;
-    case 'circle':   ellipse(c, cx, cy, w * 0.66, h * 0.62); break;
-    case 'oval':     ellipse(c, cx, cy, w * 0.52, h * 0.66); break;
-    case 'triangle': poly(c, [{ x: cx - w * 0.78, y: cy - h * 0.5 }, { x: cx + w * 0.78, y: cy - h * 0.5 }, { x: cx, y: cy + h * 0.85 }], true); break;
+    case 'square':   rect(c, cx - w * 0.56, cy - h * 0.54, w * 1.12, h * 1.08); break;
+    case 'circle':   ellipse(c, cx, cy, w * 0.6, h * 0.58); break;
+    case 'oval':     ellipse(c, cx, cy, w * 0.5, h * 0.62); break;
+    case 'triangle': poly(c, [{ x: cx - w * 0.7, y: cy - h * 0.48 }, { x: cx + w * 0.7, y: cy - h * 0.48 }, { x: cx, y: cy + h * 0.78 }], true); break;
     case 'blob': {
       const n = look.jit.length;
-      poly(c, look.jit.map((j, i) => { const a = i / n * Math.PI * 2; return { x: cx + Math.cos(a) * w * 0.64 * j, y: cy + Math.sin(a) * h * 0.62 * j }; }), true);
+      poly(c, look.jit.map((j, i) => { const a = i / n * Math.PI * 2; return { x: cx + Math.cos(a) * w * 0.58 * j, y: cy + Math.sin(a) * h * 0.58 * j }; }), true);
     }
   }
 }
@@ -254,7 +254,7 @@ function drawAll(c, kind) {
   drawEye(c, look.eyeL, mid(P(362), P(263)), dist(P(362), P(263)) * 0.45);
   drawNose(c, g);
   drawMouth(c, g);
-  drawIcon(c, kind, g.top.x, g.top.y - g.h * 0.32, g.w * 0.16);
+  drawIcon(c, kind, g.top.x, g.top.y - g.h * 0.26, g.w * 0.14);
 }
 
 // live=true: 어둡게 깐 영상 위에 흰 선 / live=false: 흰 바탕에 검정 선 + 로고
