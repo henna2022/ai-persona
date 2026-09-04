@@ -258,15 +258,16 @@ function drawAll(c, kind) {
 }
 
 // live=true: 어둡게 깐 영상 위에 흰 선 / live=false: 흰 바탕에 검정 선 + 로고
-function render(c, live, kind) {
-  const cw = c.canvas.width, ch = c.canvas.height, k = cw / W;
+// crop: 원본 영상에서 잘라낼 정사각형 { S: 한 변, ox, oy: 왼쪽 위 } (완성본용)
+function render(c, live, kind, crop = { S: W, ox: 0, oy: 0 }) {
+  const cw = c.canvas.width, ch = c.canvas.height, k = cw / crop.S;
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.fillStyle = '#fff'; c.fillRect(0, 0, cw, ch);
   c.translate(cw, 0); c.scale(-1, 1);                 // 거울처럼 좌우 반전
   if (live) { c.drawImage(source, 0, 0, cw, ch); c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(0, 0, cw, ch); }
-  c.scale(k, k);                                      // 이후 좌표는 원본 영상 픽셀 기준
+  c.scale(k, k); c.translate(-crop.ox, -crop.oy);     // 이후 좌표는 원본 영상 픽셀 기준
   c.strokeStyle = c.fillStyle = live ? '#fff' : '#111';
-  c.lineWidth = W * 0.005; c.lineCap = c.lineJoin = 'round';
+  c.lineWidth = Math.min(W, H) * 0.007; c.lineCap = c.lineJoin = 'round';
   if (lm) drawAll(c, kind);
   c.setTransform(1, 0, 0, 1, 0, 0);
   if (!live) { drawLogo(c); drawTitle(c); }
@@ -278,20 +279,23 @@ function render(c, live, kind) {
   }
 }
 
-function drawTitle(c) {
+function drawTitle(c) {                              // 좌측 상단
   if (!title.naturalWidth) return;
-  const cw = c.canvas.width, ch = c.canvas.height, tw = Math.min(cw * 0.5, ch * 0.1 * title.naturalWidth / title.naturalHeight);
-  c.drawImage(title, (cw - tw) / 2, ch * 0.04, tw, tw * title.naturalHeight / title.naturalWidth);
+  const cw = c.canvas.width, m = cw * 0.05, tw = cw * 0.32;
+  c.drawImage(title, m, m, tw, tw * title.naturalHeight / title.naturalWidth);
 }
 
-function drawLogo(c) {
-  const cw = c.canvas.width, ch = c.canvas.height, m = cw * 0.03, lh = ch * 0.07;
-  if (logo.naturalWidth) { const lw = lh * logo.naturalWidth / logo.naturalHeight; c.drawImage(logo, cw - m - lw, ch - m - lh, lw, lh); }
-  else { c.fillStyle = '#999'; c.font = `${lh * 0.4}px sans-serif`; c.textAlign = 'right'; c.fillText('logo.png 파일을 넣어주세요', cw - m, ch - m); c.textAlign = 'left'; }
+function drawLogo(c) {                               // 우측 하단
+  const cw = c.canvas.width, ch = c.canvas.height, m = cw * 0.05, lw = cw * 0.28;
+  if (logo.naturalWidth) { const lh = lw * logo.naturalHeight / logo.naturalWidth; c.drawImage(logo, cw - m - lw, ch - m - lh, lw, lh); }
+  else { c.fillStyle = '#999'; c.font = `${cw * 0.025}px sans-serif`; c.textAlign = 'right'; c.fillText('logo.png 파일을 넣어주세요', cw - m, ch - m); c.textAlign = 'left'; }
 }
 
+let first = true;
 function frame() {
   if (!running) return;
+  if (!imgSrc && video.videoWidth && (video.videoWidth !== W || video.videoHeight !== H)) { W = canvas.width = video.videoWidth; H = canvas.height = video.videoHeight; }
+  if (first) { first = false; render(ctx, true, look.neutral); return requestAnimationFrame(frame); }   // 첫 화면은 인식 없이 바로 표시
   const res = imgSrc ? landmarker.detect(source) : landmarker.detectForVideo(source, performance.now());
   lm = res.faceLandmarks[0] || null;
   if (res.faceBlendshapes[0]) for (const b of res.faceBlendshapes[0].categories) bs[b.categoryName] = (bs[b.categoryName] ?? b.score) * 0.7 + b.score * 0.3;
@@ -309,9 +313,11 @@ async function shoot() {
   h.classList.remove('big');
   if (!lm) return alert('얼굴을 찾지 못했어요. 다시 해주세요.');
   running = false;
-  const rc = document.createElement('canvas'), k = Math.min(2, 1600 / W);
-  rc.width = Math.round(W * k); rc.height = Math.round(H * k);
-  render(rc.getContext('2d'), false, mood());
+  const g = geom(), S = Math.min(W, H), clamp = (v, hi) => Math.max(0, Math.min(v, hi));
+  const crop = { S, ox: clamp(g.cx - S / 2, W - S), oy: clamp(g.cy - S / 2, H - S) };   // 얼굴 중심 1:1
+  const rc = document.createElement('canvas'), k = Math.min(2, 1600 / S);
+  rc.width = rc.height = Math.round(S * k);
+  render(rc.getContext('2d'), false, mood(), crop);
   $('pic').src = rc.toDataURL('image/png');
   show('gen'); await new Promise(r => setTimeout(r, 2000));   // 생성 중 안내 2초
   show('result');
@@ -328,6 +334,7 @@ async function openSource() {
     video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } }, audio: false });
     await new Promise(r => video.onloadedmetadata = r);
     await video.play();
+    while (!video.videoWidth) await new Promise(r => setTimeout(r, 50));   // iOS에서 크기가 늦게 잡히는 경우 대기
     source = video; W = video.videoWidth; H = video.videoHeight;
   }
   canvas.width = W; canvas.height = H;
@@ -340,8 +347,10 @@ function wipe() { $('pic').src = ''; lm = null; }   // 완성본과 얼굴 좌�
 addEventListener('pagehide', wipe);              // 페이지를 닫거나 벗어나도 삭제
 $('save').onclick = () => { const a = document.createElement('a'); a.href = $('pic').src; a.download = `face-${Date.now()}.png`; a.click(); };
 $('go').onclick = async () => {
-  try { await openSource(); } catch (e) { return alert('카메라를 열 수 없어요. 브라우저의 카메라 권한을 허용해주세요.\n' + e.message); }
-  newLook(); show('live'); running = true; frame();
+  $('go').disabled = true; $('go').textContent = '카메라 여는 중…';
+  try { await openSource(); }
+  catch (e) { $('go').disabled = false; $('go').textContent = '시작하기'; return alert('카메라를 열 수 없어요. 브라우저의 카메라 권한을 허용해주세요.\n' + e.message); }
+  newLook(); show('live'); running = true; first = true; frame();
 };
 
 (async () => {
@@ -349,6 +358,7 @@ $('go').onclick = async () => {
   const opts = { baseOptions: { modelAssetPath: MODEL, delegate: 'GPU' }, outputFaceBlendshapes: true, runningMode: imgSrc ? 'IMAGE' : 'VIDEO', numFaces: 1 };
   try { landmarker = await FaceLandmarker.createFromOptions(fs, opts); }
   catch { opts.baseOptions.delegate = 'CPU'; landmarker = await FaceLandmarker.createFromOptions(fs, opts); }
+  if (!imgSrc) { const warm = document.createElement('canvas'); warm.width = warm.height = 64; landmarker.detectForVideo(warm, performance.now()); }   // 예열
   $('go').disabled = false; $('go').textContent = '시작하기';
 })().catch(e => { $('go').textContent = '불러오기 실패: ' + e.message; });
 </script>

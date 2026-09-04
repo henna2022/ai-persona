@@ -3,3 +3,5 @@ cert.pem
 .claude/
 .DS_Store
 ai persona.png
+qr.png
+qr.svg
