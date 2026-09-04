@@ -99,9 +99,12 @@ const T = { angry: 0.35, smile: 0.4, jawOpen: 0.4, browUp: 0.25 };
 
 const FACES  = ['square', 'circle', 'oval', 'triangle', 'blob'];
 const EYES   = ['dot', 'rings', 'square', 'triangle', 'x', 'hatch'];
-const BROWS  = ['line', 'zigzag', 'wave', 'ticks', 'scribble', 'none'];
-const NOSES  = ['line', 'bar', 'triangle', 'lines3', 'T', 'L'];
-const MOUTHS = ['slot', 'dashes', 'x', 'oval', 'teeth', 'dots'];
+const BROWS  = ['line', 'zigzag', 'bar', 'ticks', 'scribble', 'lines3', 'none'];
+const NOSES  = ['line', 'bar', 'triangle', 'lines3'];
+const MOUTHS = ['slot', 'ring', 'lips', 'zigzag', 'x', 'dots'];
+// 입술 바깥/안쪽 윤곽 점 (입 모양 그대로 따라 그리는 데 사용)
+const LIP_OUT = [61,146,91,181,84,17,314,405,321,375,291,409,270,269,267,0,37,39,40,185];
+const LIP_IN  = [78,95,88,178,87,14,317,402,318,324,308,415,310,311,312,13,82,81,80,191];
 const OVAL = [10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
 
 const $ = id => document.getElementById(id);
@@ -144,13 +147,13 @@ function geom() {
 
 function drawFace(c, { cx, cy, w, h }) {
   switch (look.face) {
-    case 'square':   rect(c, cx - w * 0.56, cy - h * 0.54, w * 1.12, h * 1.08); break;
-    case 'circle':   ellipse(c, cx, cy, w * 0.6, h * 0.58); break;
-    case 'oval':     ellipse(c, cx, cy, w * 0.5, h * 0.62); break;
-    case 'triangle': poly(c, [{ x: cx - w * 0.7, y: cy - h * 0.48 }, { x: cx + w * 0.7, y: cy - h * 0.48 }, { x: cx, y: cy + h * 0.78 }], true); break;
+    case 'square':   rect(c, cx - w * 0.5, cy - h * 0.5, w, h); break;
+    case 'circle':   ellipse(c, cx, cy, w * 0.54, h * 0.54); break;
+    case 'oval':     ellipse(c, cx, cy, w * 0.46, h * 0.58); break;
+    case 'triangle': poly(c, [{ x: cx - w * 0.62, y: cy - h * 0.45 }, { x: cx + w * 0.62, y: cy - h * 0.45 }, { x: cx, y: cy + h * 0.7 }], true); break;
     case 'blob': {
       const n = look.jit.length;
-      poly(c, look.jit.map((j, i) => { const a = i / n * Math.PI * 2; return { x: cx + Math.cos(a) * w * 0.58 * j, y: cy + Math.sin(a) * h * 0.58 * j }; }), true);
+      poly(c, look.jit.map((j, i) => { const a = i / n * Math.PI * 2; return { x: cx + Math.cos(a) * w * 0.53 * j, y: cy + Math.sin(a) * h * 0.53 * j }; }), true);
     }
   }
 }
@@ -180,7 +183,8 @@ function drawBrow(c, type, ids, lift) {
   switch (type) {
     case 'line':     line(c, pts[0], pts[pts.length - 1]); break;
     case 'zigzag':   poly(c, out.map((p, k) => ({ x: p.x, y: p.y + (k % 2 ? amp : -amp) }))); break;
-    case 'wave':     c.beginPath(); c.moveTo(out[0].x, out[0].y); for (let k = 1; k < n; k++) c.quadraticCurveTo(out[k - 1].x, out[k - 1].y + (k % 2 ? amp * 2 : -amp * 2), out[k].x, out[k].y); c.stroke(); break;
+    case 'bar':      { const x0 = Math.min(...pts.map(p => p.x)), x1 = Math.max(...pts.map(p => p.x)), y = pts.reduce((a, p) => a + p.y, 0) / pts.length; rect(c, x0, y - amp, x1 - x0, amp * 2); break; }
+    case 'lines3':   { const x0 = Math.min(...pts.map(p => p.x)), x1 = Math.max(...pts.map(p => p.x)), y = pts.reduce((a, p) => a + p.y, 0) / pts.length; [-1, 0, 1].forEach(k => line(c, { x: x0, y: y + k * amp * 1.2 }, { x: x1, y: y + k * amp * 1.2 })); break; }
     case 'ticks':    out.forEach(p => line(c, { x: p.x, y: p.y - amp }, { x: p.x, y: p.y + amp })); break;
     case 'scribble': poly(c, out.map((p, k) => ({ x: p.x + (k % 3 - 1) * amp, y: p.y + (k % 2 ? amp * 1.8 : -amp * 1.8) }))); break;
   }
@@ -193,24 +197,31 @@ function drawNose(c, g) {
     case 'bar':      rect(c, tip.x - nw * 0.14, top.y, nw * 0.28, tip.y - top.y); break;
     case 'triangle': poly(c, [top, { x: tip.x - nw * 0.6, y: tip.y }, { x: tip.x + nw * 0.6, y: tip.y }], true); break;
     case 'lines3':   line(c, top, tip); [-1, 1].forEach(s => line(c, { x: top.x + s * nw * 0.22, y: top.y + (tip.y - top.y) * 0.35 }, { x: tip.x + s * nw * 0.22, y: tip.y })); break;
-    case 'T':        line(c, top, tip); line(c, { x: top.x - nw * 0.35, y: top.y }, { x: top.x + nw * 0.35, y: top.y }); break;
-    case 'L':        line(c, top, tip); line(c, tip, { x: tip.x + nw * 0.45, y: tip.y }); break;
   }
   const r = g.w * 0.014;                              // 콧구멍은 항상 점 2개
   circle(c, nl.x, nl.y, r); circle(c, nr.x, nr.y, r);
 }
 
+function lip(ids, k, ctr) { return ids.map(P).map(p => ({ x: ctr.x + (p.x - ctr.x) * k, y: ctr.y + (p.y - ctr.y) * k })); }
+function loop(c, pts) {                               // 점들을 부드러운 닫힌 곡선으로
+  const n = pts.length, m0 = mid(pts[n - 1], pts[0]); c.beginPath(); c.moveTo(m0.x, m0.y);
+  for (let i = 0; i < n; i++) { const m = mid(pts[i], pts[(i + 1) % n]); c.quadraticCurveTo(pts[i].x, pts[i].y, m.x, m.y); }
+  c.closePath(); c.stroke();
+}
+function bbox(pts) {
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+}
 function drawMouth(c, g) {
-  const { x, y } = mid(P(13), P(14));
-  const mw = dist(P(61), P(291)) * 1.1, mh = Math.max(dist(P(0), P(17)) * 1.1, mw * 0.22);   // 입을 벌리면 mh가 커짐
-  const rx = mw / 2, ry = mh / 2;
+  const ctr = mid(P(13), P(14)), out = lip(LIP_OUT, 1.2, ctr), inn = lip(LIP_IN, 1.2, ctr);
+  const o = bbox(out), i = bbox(inn); i.h = Math.max(i.h, o.h * 0.12);   // 다물면 얇은 틈
   switch (look.mouth) {
-    case 'slot':   rect(c, x - rx, y - ry, mw, mh); rect(c, x - rx * 0.7, y - ry * 0.3, mw * 0.7, mh * 0.3); break;
-    case 'dashes': c.save(); c.setLineDash([mw * 0.08, mw * 0.06]); ellipse(c, x, y, rx, ry); c.restore(); break;
-    case 'x':      line(c, { x: x - rx, y: y - ry }, { x: x + rx, y: y + ry }); line(c, { x: x - rx, y: y + ry }, { x: x + rx, y: y - ry }); line(c, { x: x - rx * 0.9, y }, { x: x + rx * 0.9, y: y + ry * 0.2 }); break;
-    case 'oval':   ellipse(c, x, y, rx, ry); line(c, { x: x - rx, y }, { x: x + rx, y }); break;
-    case 'teeth':  rect(c, x - rx, y - ry, mw, mh); for (let k = -1; k <= 1; k++) line(c, { x: x + k * rx * 0.5, y: y - ry }, { x: x + k * rx * 0.5, y: y + ry }); break;
-    case 'dots':   for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; circle(c, x + Math.cos(a) * rx, y + Math.sin(a) * ry, g.w * 0.012, true); } break;
+    case 'slot':   rect(c, o.x0, o.y0, o.w, o.h); rect(c, i.x0, i.cy - i.h / 2, i.w, i.h); break;
+    case 'ring':   ellipse(c, o.cx, o.cy, o.w / 2, o.h / 2); ellipse(c, i.cx, i.cy, i.w / 2, i.h / 2); break;
+    case 'lips':   loop(c, out); loop(c, inn); break;
+    case 'zigzag': rect(c, o.x0, o.y0, o.w, o.h); poly(c, Array.from({ length: 9 }, (_, k) => ({ x: i.x0 + i.w * k / 8, y: i.cy + (k % 2 ? -1 : 1) * i.h / 2 }))); break;
+    case 'x':      line(c, { x: o.x0, y: o.y0 }, { x: o.x1, y: o.y1 }); line(c, { x: o.x0, y: o.y1 }, { x: o.x1, y: o.y0 }); line(c, { x: o.x0, y: o.cy }, { x: o.x1, y: o.cy + o.h * 0.1 }); break;
+    case 'dots':   inn.forEach((p, k) => { if (k % 2 === 0) circle(c, p.x, p.y, g.w * 0.012, true); }); break;
   }
 }
 
@@ -250,11 +261,11 @@ function drawAll(c, kind) {
   drawFace(c, g);
   drawBrow(c, look.browR, [70, 63, 105, 66, 107], g.h * 0.04);
   drawBrow(c, look.browL, [336, 296, 334, 293, 300], g.h * 0.04);
-  drawEye(c, look.eyeR, mid(P(33), P(133)), dist(P(33), P(133)) * 0.45);
-  drawEye(c, look.eyeL, mid(P(362), P(263)), dist(P(362), P(263)) * 0.45);
+  drawEye(c, look.eyeR, mid(P(33), P(133)), dist(P(33), P(133)) * 0.4);
+  drawEye(c, look.eyeL, mid(P(362), P(263)), dist(P(362), P(263)) * 0.4);
   drawNose(c, g);
   drawMouth(c, g);
-  drawIcon(c, kind, g.top.x, g.top.y - g.h * 0.26, g.w * 0.14);
+  drawIcon(c, kind, g.top.x, g.top.y - g.h * 0.22, g.w * 0.12);
 }
 
 // live=true: 어둡게 깐 영상 위에 흰 선 / live=false: 흰 바탕에 검정 선 + 로고
