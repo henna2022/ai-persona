@@ -237,10 +237,14 @@ function drawIcon(c, kind, x, y, s) {
     case 'crown':
       poly(c, [{ x: x - s, y: y + s * 0.7 }, { x: x - s, y: y - s * 0.6 }, { x: x - s * 0.5, y }, { x, y: y - s }, { x: x + s * 0.5, y }, { x: x + s, y: y - s * 0.6 }, { x: x + s, y: y + s * 0.7 }], true);
       line(c, { x: x - s, y: y + s * 0.35 }, { x: x + s, y: y + s * 0.35 }); break;
-    case 'angry': {                                   // 화남 표시: 뭉게구름 모양
+    case 'angry': {                                   // 화남 표시: 구름 + 줄기 + 왼쪽 빗금 2개 (전시물 모양)
       const n = 60, pts = [];
-      for (let k = 0; k < n; k++) { const t = k / n * Math.PI * 2, r = 1 + 0.25 * Math.abs(Math.sin(3.5 * t)); pts.push({ x: x + Math.cos(t) * s * 1.05 * r, y: y + Math.sin(t) * s * 0.7 * r }); }
-      poly(c, pts, true); break;
+      for (let k = 0; k < n; k++) { const t = k / n * Math.PI * 2, r = 1 + 0.25 * Math.abs(Math.sin(2.5 * t)); pts.push({ x: x + Math.cos(t) * s * 0.95 * r, y: y - s * 0.25 + Math.sin(t) * s * 0.6 * r }); }
+      poly(c, pts, true);
+      line(c, { x, y: y + s * 0.45 }, { x, y: y + s * 1.1 });
+      line(c, { x: x - s * 0.6, y: y + s * 0.95 }, { x: x - s * 0.35, y: y + s * 0.55 });
+      line(c, { x: x - s * 0.38, y: y + s * 1.05 }, { x: x - s * 0.13, y: y + s * 0.65 });
+      break;
     }
     case 'bang': {                                    // 느낌표
       const w = s * 0.35;
