@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI 페르소나</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: #e9e9e9; color: #111; font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; user-select: none; }
+  .screen { position: fixed; inset: 0; display: none; flex-direction: column; }
+  .screen.on { display: flex; }
+  #start { align-items: center; justify-content: center; text-align: center; padding: 28px; gap: 22px; }
+  #start h1 { font-size: 36px; }
+  #start p { font-size: 16px; line-height: 1.55; color: #444; }
+  #start small { font-size: 13px; color: #777; }
+  button { font: inherit; font-weight: 700; border: 0; border-radius: 8px; padding: 16px 20px; cursor: pointer; touch-action: manipulation; }
+  .yellow { background: #f5c400; color: #111; font-size: 22px; }
+  .dark { background: #111; color: #fff; font-size: 18px; }
+  button:disabled { opacity: .45; }
+  #cam { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  #view { flex: 1; min-height: 0; width: 100%; object-fit: cover; background: #000; }
+  #hint { position: absolute; top: env(safe-area-inset-top, 0); left: 0; right: 0; padding: 16px; text-align: center; color: #fff; text-shadow: 0 1px 4px #000; font-size: 16px; font-weight: 700; pointer-events: none; }
+  #hint.big { font-size: 120px; top: 30%; }
+  .bar { display: flex; gap: 10px; padding: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0)); }
+  .bar button { flex: 1; }
+  .note { padding: 8px 16px 0; text-align: center; font-size: 12px; color: #666; }
+  #pic { flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #fff; }
+</style>
+</head>
+<body>
+<section id="start" class="screen on">
+  <h1>AI 페르소나</h1>
+  <p>카메라가 얼굴을 찾아서<br>눈, 코, 입을 도형으로 바꿔 그려요.<br>표정에 따라 머리 위 표시가 달라져요.</p>
+  <button id="go" class="yellow" disabled>불러오는 중…</button>
+  <small>카메라 영상은 이 기기 안에서만 처리되고<br>어디에도 전송되거나 저장되지 않아요.</small>
+</section>
+
+<section id="live" class="screen">
+  <video id="cam" playsinline muted autoplay></video>
+  <canvas id="view"></canvas>
+  <div id="hint"></div>
+  <div class="bar">
+    <button id="shuffle" class="yellow">① 얼굴 고르기</button>
+    <button id="shoot" class="dark">② 촬영</button>
+  </div>
+</section>
+
+<section id="result" class="screen">
+  <img id="pic" alt="완성된 얼굴 그림">
+  <p class="note">얼굴 사진은 저장되지 않아요. 이 그림은 기기 안에서만 만들어졌고, 다시 하기를 누르면 바로 지워져요.</p>
+  <div class="bar">
+    <button id="save" class="yellow">사진 저장</button>
+    <button id="again" class="dark">다시 하기</button>
+  </div>
+</section>
+
+<script type="module">
+import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs";
+const WASM  = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
+const MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+
+// 표정 판정 기준값(0~1). 잘 안 잡히면 이 숫자만 조절. 주소 뒤에 ?debug 를 붙이면 현재 값이 화면에 보임.
+const T = { angry: 0.35, smile: 0.4, jawOpen: 0.4, browUp: 0.25 };
+
+const FACES  = ['square', 'circle', 'oval', 'triangle', 'blob'];
+const EYES   = ['dot', 'rings', 'square', 'triangle', 'x', 'hatch'];
+const BROWS  = ['line', 'zigzag', 'wave', 'ticks', 'scribble', 'none'];
+const NOSES  = ['line', 'bar', 'triangle', 'lines3', 'T', 'L'];
+const MOUTHS = ['slot', 'dashes', 'x', 'oval', 'teeth', 'dots'];
+const OVAL = [10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
+
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const debug = params.has('debug');
+const imgSrc = params.get('img');           // ?img=사진경로 → 카메라 대신 사진으로 테스트
+const video = $('cam'), canvas = $('view'), ctx = canvas.getContext('2d');
+const logo = new Image(); logo.src = 'logo.png';
+
+let landmarker, source, W, H, look, lm = null, running = false;
+const bs = {};                               // 부드럽게 만든 표정 수치
+
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const P = i => ({ x: lm[i].x * W, y: lm[i].y * H });
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+function newLook() {
+  look = {
+    face: pick(FACES), eyeL: pick(EYES), eyeR: pick(EYES), browL: pick(BROWS), browR: pick(BROWS),
+    nose: pick(NOSES), mouth: pick(MOUTHS), neutral: pick(['heart', 'crown']),
+    jit: Array.from({ length: 48 }, () => rnd(0.88, 1.12)),
+  };
+}
+
+// ---- 그리기 기본 ----
+function poly(c, pts, close) { c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); if (close) c.closePath(); c.stroke(); }
+function line(c, a, b) { poly(c, [a, b]); }
+function circle(c, x, y, r, fill) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); fill ? c.fill() : c.stroke(); }
+function ellipse(c, x, y, rx, ry) { c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); c.stroke(); }
+function rect(c, x, y, w, h) { c.strokeRect(x, y, w, h); }
+
+function geom() {
+  const pts = OVAL.map(P), xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0, top: P(10) };
+}
+
+function drawFrame(c, g) { const s = g.w * 2.3; c.save(); c.lineWidth *= 0.5; rect(c, g.cx - s / 2, g.cy - s * 0.58, s, s); c.restore(); }
+
+function drawFace(c, { cx, cy, w, h }) {
+  switch (look.face) {
+    case 'square':   rect(c, cx - w * 0.62, cy - h * 0.58, w * 1.24, h * 1.16); break;
+    case 'circle':   ellipse(c, cx, cy, w * 0.66, h * 0.62); break;
+    case 'oval':     ellipse(c, cx, cy, w * 0.52, h * 0.66); break;
+    case 'triangle': poly(c, [{ x: cx - w * 0.78, y: cy - h * 0.5 }, { x: cx + w * 0.78, y: cy - h * 0.5 }, { x: cx, y: cy + h * 0.85 }], true); break;
+    case 'blob': {
+      const n = look.jit.length;
+      poly(c, look.jit.map((j, i) => { const a = i / n * Math.PI * 2; return { x: cx + Math.cos(a) * w * 0.64 * j, y: cy + Math.sin(a) * h * 0.62 * j }; }), true);
+    }
+  }
+}
+
+function drawEye(c, type, { x, y }, r) {
+  switch (type) {
+    case 'dot':      circle(c, x, y, r); circle(c, x, y, r * 0.25, true); break;
+    case 'rings':    for (let k = 1; k <= 3; k++) circle(c, x, y, r * k / 3); circle(c, x, y, r * 0.12, true); break;
+    case 'square':   rect(c, x - r, y - r, r * 2, r * 2); circle(c, x, y, r * 0.22, true); break;
+    case 'triangle': poly(c, [{ x: x - r, y: y - r * 0.8 }, { x: x + r, y: y - r * 0.8 }, { x, y: y + r }], true); circle(c, x, y, r * 0.2, true); break;
+    case 'x':        line(c, { x: x - r, y: y - r }, { x: x + r, y: y + r }); line(c, { x: x - r, y: y + r }, { x: x + r, y: y - r }); line(c, { x: x - r * 0.9, y: y - r * 0.5 }, { x: x + r * 1.1, y: y + r * 0.8 }); break;
+    case 'hatch':    for (let k = -1; k <= 1; k++) line(c, { x: x + k * r * 0.6, y: y - r }, { x: x + k * r * 0.6, y: y + r }); break;
+  }
+}
+
+function drawBrow(c, type, ids, lift) {
+  if (type === 'none') return;
+  const pts = ids.map(P).map(p => ({ x: p.x, y: p.y - lift }));
+  const n = 14, out = [], segs = pts.slice(1).map((p, i) => dist(pts[i], p)), total = segs.reduce((a, b) => a + b, 0);
+  for (let k = 0; k < n; k++) {                       // 눈썹 선 위에 점 n개 고르게 찍기
+    let d = total * k / (n - 1), i = 0;
+    while (i < segs.length - 1 && d > segs[i]) d -= segs[i++];
+    const t = segs[i] ? d / segs[i] : 0;
+    out.push({ x: pts[i].x + (pts[i + 1].x - pts[i].x) * t, y: pts[i].y + (pts[i + 1].y - pts[i].y) * t });
+  }
+  const amp = lift * 0.6;
+  switch (type) {
+    case 'line':     line(c, pts[0], pts[pts.length - 1]); break;
+    case 'zigzag':   poly(c, out.map((p, k) => ({ x: p.x, y: p.y + (k % 2 ? amp : -amp) }))); break;
+    case 'wave':     c.beginPath(); c.moveTo(out[0].x, out[0].y); for (let k = 1; k < n; k++) c.quadraticCurveTo(out[k - 1].x, out[k - 1].y + (k % 2 ? amp * 2 : -amp * 2), out[k].x, out[k].y); c.stroke(); break;
+    case 'ticks':    out.forEach(p => line(c, { x: p.x, y: p.y - amp }, { x: p.x, y: p.y + amp })); break;
+    case 'scribble': poly(c, out.map((p, k) => ({ x: p.x + (k % 3 - 1) * amp, y: p.y + (k % 2 ? amp * 1.8 : -amp * 1.8) }))); break;
+  }
+}
+
+function drawNose(c, g) {
+  const top = P(6), tip = P(2), nl = P(327), nr = P(98), nw = dist(nl, nr);
+  switch (look.nose) {
+    case 'line':     line(c, top, tip); break;
+    case 'bar':      rect(c, tip.x - nw * 0.14, top.y, nw * 0.28, tip.y - top.y); break;
+    case 'triangle': poly(c, [top, { x: tip.x - nw * 0.6, y: tip.y }, { x: tip.x + nw * 0.6, y: tip.y }], true); break;
+    case 'lines3':   line(c, top, tip); [-1, 1].forEach(s => line(c, { x: top.x + s * nw * 0.22, y: top.y + (tip.y - top.y) * 0.35 }, { x: tip.x + s * nw * 0.22, y: tip.y })); break;
+    case 'T':        line(c, top, tip); line(c, { x: top.x - nw * 0.35, y: top.y }, { x: top.x + nw * 0.35, y: top.y }); break;
+    case 'L':        line(c, top, tip); line(c, tip, { x: tip.x + nw * 0.45, y: tip.y }); break;
+  }
+  const r = g.w * 0.014;                              // 콧구멍은 항상 점 2개
+  circle(c, nl.x, nl.y, r); circle(c, nr.x, nr.y, r);
+}
+
+function drawMouth(c, g) {
+  const l = P(61), r = P(291), { x, y } = mid(P(13), P(14));
+  const mw = dist(l, r) * 1.1, mh = Math.max(dist(P(0), P(17)), mw * 0.35);
+  switch (look.mouth) {
+    case 'slot':   rect(c, x - mw / 2, y - mh / 2, mw, mh); rect(c, x - mw * 0.35, y - mh * 0.12, mw * 0.7, mh * 0.24); break;
+    case 'dashes': c.save(); c.setLineDash([mw * 0.08, mw * 0.06]); line(c, { x: x - mw / 2, y }, { x: x + mw / 2, y }); c.restore(); break;
+    case 'x':      line(c, { x: x - mw * 0.4, y: y - mh * 0.4 }, { x: x + mw * 0.4, y: y + mh * 0.4 }); line(c, { x: x - mw * 0.4, y: y + mh * 0.4 }, { x: x + mw * 0.4, y: y - mh * 0.4 }); line(c, { x: x - mw * 0.45, y }, { x: x + mw * 0.45, y: y + mh * 0.1 }); break;
+    case 'oval':   ellipse(c, x, y, mw * 0.5, mh * 0.5); line(c, { x: x - mw * 0.5, y }, { x: x + mw * 0.5, y }); break;
+    case 'teeth':  rect(c, x - mw / 2, y - mh * 0.35, mw, mh * 0.7); for (let k = -1; k <= 1; k++) line(c, { x: x + k * mw * 0.25, y: y - mh * 0.35 }, { x: x + k * mw * 0.25, y: y + mh * 0.35 }); break;
+    case 'dots':   for (let k = -2; k <= 2; k++) circle(c, x + k * mw * 0.2, y, g.w * 0.012, true); break;
+  }
+}
+
+function drawIcon(c, kind, x, y, s) {
+  switch (kind) {
+    case 'heart':
+      c.beginPath(); c.moveTo(x, y + s * 0.9);
+      c.bezierCurveTo(x - s * 1.4, y - s * 0.1, x - s * 0.6, y - s * 1.1, x, y - s * 0.3);
+      c.bezierCurveTo(x + s * 0.6, y - s * 1.1, x + s * 1.4, y - s * 0.1, x, y + s * 0.9); c.stroke(); break;
+    case 'crown':
+      poly(c, [{ x: x - s, y: y + s * 0.7 }, { x: x - s, y: y - s * 0.6 }, { x: x - s * 0.5, y }, { x, y: y - s }, { x: x + s * 0.5, y }, { x: x + s, y: y - s * 0.6 }, { x: x + s, y: y + s * 0.7 }], true);
+      line(c, { x: x - s, y: y + s * 0.35 }, { x: x + s, y: y + s * 0.35 }); break;
+    case 'angry':                                     // 💢 모양: 바깥을 향한 꺾쇠 4개
+      for (let k = 0; k < 4; k++) {
+        const a = k * Math.PI / 2, tip = { x: x + Math.cos(a) * s, y: y + Math.sin(a) * s };
+        [-0.7, 0.7].forEach(d => line(c, tip, { x: x + Math.cos(a + d) * s * 0.4, y: y + Math.sin(a + d) * s * 0.4 }));
+      }
+      break;
+    case 'bang': {                                    // 느낌표
+      const w = s * 0.35;
+      poly(c, [{ x: x - w, y: y - s }, { x: x + w, y: y - s }, { x: x + w * 0.4, y: y + s * 0.35 }, { x: x - w * 0.4, y: y + s * 0.35 }], true);
+      circle(c, x, y + s * 0.8, w * 0.55); break;
+    }
+  }
+}
+
+function mood() {
+  const v = n => bs[n] || 0;
+  if ((v('browDownLeft') + v('browDownRight')) / 2 > T.angry) return 'angry';
+  if ((v('mouthSmileLeft') + v('mouthSmileRight')) / 2 > T.smile) return 'heart';
+  if (v('jawOpen') > T.jawOpen && (v('browInnerUp') > T.browUp || (v('eyeWideLeft') + v('eyeWideRight')) / 2 > T.browUp)) return 'bang';
+  return look.neutral;
+}
+
+function drawAll(c, kind) {
+  const g = geom();
+  drawFrame(c, g);
+  drawFace(c, g);
+  drawBrow(c, look.browR, [70, 63, 105, 66, 107], g.h * 0.04);
+  drawBrow(c, look.browL, [336, 296, 334, 293, 300], g.h * 0.04);
+  drawEye(c, look.eyeR, mid(P(33), P(133)), dist(P(33), P(133)) * 0.45);
+  drawEye(c, look.eyeL, mid(P(362), P(263)), dist(P(362), P(263)) * 0.45);
+  drawNose(c, g);
+  drawMouth(c, g);
+  drawIcon(c, kind, g.top.x, g.top.y - g.h * 0.32, g.w * 0.16);
+}
+
+// live=true: 어둡게 깐 영상 위에 흰 선 / live=false: 흰 바탕에 검정 선 + 로고
+function render(c, live, kind) {
+  const cw = c.canvas.width, ch = c.canvas.height, k = cw / W;
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, cw, ch);
+  c.translate(cw, 0); c.scale(-1, 1);                 // 거울처럼 좌우 반전
+  if (live) { c.drawImage(source, 0, 0, cw, ch); c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(0, 0, cw, ch); }
+  c.scale(k, k);                                      // 이후 좌표는 원본 영상 픽셀 기준
+  c.strokeStyle = c.fillStyle = live ? '#fff' : '#111';
+  c.lineWidth = W * 0.005; c.lineCap = c.lineJoin = 'round';
+  if (lm) drawAll(c, kind);
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  if (!live) drawLogo(c);
+  if (live && debug) {
+    c.fillStyle = '#0f0'; c.font = '14px monospace';
+    ['browDownLeft', 'browDownRight', 'mouthSmileLeft', 'mouthSmileRight', 'jawOpen', 'browInnerUp', 'eyeWideLeft', 'eyeWideRight']
+      .forEach((n, i) => c.fillText(`${n} ${(bs[n] || 0).toFixed(2)}`, 8, 20 + i * 16));
+    c.fillText('→ ' + kind, 8, 20 + 8 * 16);
+  }
+}
+
+function drawLogo(c) {
+  const cw = c.canvas.width, ch = c.canvas.height, m = cw * 0.03, lh = ch * 0.07;
+  if (logo.naturalWidth) { const lw = lh * logo.naturalWidth / logo.naturalHeight; c.drawImage(logo, cw - m - lw, ch - m - lh, lw, lh); }
+  else { c.fillStyle = '#999'; c.font = `${lh * 0.4}px sans-serif`; c.textAlign = 'right'; c.fillText('logo.png 파일을 넣어주세요', cw - m, ch - m); c.textAlign = 'left'; }
+}
+
+function frame() {
+  if (!running) return;
+  const res = imgSrc ? landmarker.detect(source) : landmarker.detectForVideo(source, performance.now());
+  lm = res.faceLandmarks[0] || null;
+  if (res.faceBlendshapes[0]) for (const b of res.faceBlendshapes[0].categories) bs[b.categoryName] = (bs[b.categoryName] ?? b.score) * 0.7 + b.score * 0.3;
+  render(ctx, true, mood());
+  if (!$('hint').classList.contains('big')) $('hint').textContent = lm ? '표정을 지어보세요' : '얼굴을 화면에 맞춰주세요';
+  requestAnimationFrame(frame);
+}
+
+function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); }
+
+async function shoot() {
+  if (!lm) return alert('얼굴을 찾지 못했어요. 화면에 얼굴을 맞춰주세요.');
+  const h = $('hint'); h.classList.add('big');
+  for (let n = 3; n > 0; n--) { h.textContent = n; await new Promise(r => setTimeout(r, 1000)); }
+  h.classList.remove('big');
+  if (!lm) return alert('얼굴을 찾지 못했어요. 다시 해주세요.');
+  running = false;
+  const rc = document.createElement('canvas'), k = Math.min(2, 1600 / W);
+  rc.width = Math.round(W * k); rc.height = Math.round(H * k);
+  render(rc.getContext('2d'), false, mood());
+  $('pic').src = rc.toDataURL('image/png');
+  show('result');
+}
+
+async function openSource() {
+  if (imgSrc) {
+    const im = new Image(); im.src = imgSrc; await im.decode();
+    const k = Math.min(1, 1200 / im.naturalWidth);
+    source = document.createElement('canvas');
+    source.width = W = Math.round(im.naturalWidth * k); source.height = H = Math.round(im.naturalHeight * k);
+    source.getContext('2d').drawImage(im, 0, 0, W, H);
+  } else {
+    video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } }, audio: false });
+    await new Promise(r => video.onloadedmetadata = r);
+    await video.play();
+    source = video; W = video.videoWidth; H = video.videoHeight;
+  }
+  canvas.width = W; canvas.height = H;
+}
+
+$('shuffle').onclick = newLook;
+$('shoot').onclick = shoot;
+$('again').onclick = () => { wipe(); show('live'); running = true; frame(); };
+function wipe() { $('pic').src = ''; lm = null; }   // 완성본과 얼굴 좌표를 즉시 삭제
+addEventListener('pagehide', wipe);              // 페이지를 닫거나 벗어나도 삭제
+$('save').onclick = () => { const a = document.createElement('a'); a.href = $('pic').src; a.download = `face-${Date.now()}.png`; a.click(); };
+$('go').onclick = async () => {
+  try { await openSource(); } catch (e) { return alert('카메라를 열 수 없어요. 브라우저의 카메라 권한을 허용해주세요.\n' + e.message); }
+  newLook(); show('live'); running = true; frame();
+};
+
+(async () => {
+  const fs = await FilesetResolver.forVisionTasks(WASM);
+  const opts = { baseOptions: { modelAssetPath: MODEL, delegate: 'GPU' }, outputFaceBlendshapes: true, runningMode: imgSrc ? 'IMAGE' : 'VIDEO', numFaces: 1 };
+  try { landmarker = await FaceLandmarker.createFromOptions(fs, opts); }
+  catch { opts.baseOptions.delegate = 'CPU'; landmarker = await FaceLandmarker.createFromOptions(fs, opts); }
+  $('go').disabled = false; $('go').textContent = '시작하기';
+})().catch(e => { $('go').textContent = '불러오기 실패: ' + e.message; });
+</script>
+</body>
+</html>
