@@ -99,7 +99,7 @@ const T = { angry: 0.35, smile: 0.4, jawOpen: 0.4, browUp: 0.25 };
 
 const FACES  = ['square', 'circle', 'oval', 'triangle', 'blob'];
 const EYES   = ['dot', 'rings', 'square', 'triangle', 'x', 'hatch'];
-const BROWS  = ['line', 'zigzag', 'bar', 'ticks', 'scribble', 'lines3', 'none'];
+const BROWS  = ['line', 'arc', 'zigzag', 'bar', 'ticks', 'scribble', 'lines3', 'none'];
 const NOSES  = ['line', 'bar', 'triangle', 'lines3'];
 const MOUTHS = ['slot', 'ring', 'lips', 'zigzag', 'x', 'dots'];
 // 입술 바깥/안쪽 윤곽 점 (입 모양 그대로 따라 그리는 데 사용)
@@ -172,7 +172,8 @@ function drawEye(c, type, { x, y }, r) {
 function drawBrow(c, type, ids, lift) {
   if (type === 'none') return;
   const pts = ids.map(P).map(p => ({ x: p.x, y: p.y - lift }));
-  const n = 14, out = [], segs = pts.slice(1).map((p, i) => dist(pts[i], p)), total = segs.reduce((a, b) => a + b, 0);
+  const n = { zigzag: 26, scribble: 40, ticks: 16 }[type] || 14;   // 빽빽한 정도
+  const out = [], segs = pts.slice(1).map((p, i) => dist(pts[i], p)), total = segs.reduce((a, b) => a + b, 0);
   for (let k = 0; k < n; k++) {                       // 눈썹 선 위에 점 n개 고르게 찍기
     let d = total * k / (n - 1), i = 0;
     while (i < segs.length - 1 && d > segs[i]) d -= segs[i++];
@@ -182,6 +183,7 @@ function drawBrow(c, type, ids, lift) {
   const amp = lift * 0.6;
   switch (type) {
     case 'line':     line(c, pts[0], pts[pts.length - 1]); break;
+    case 'arc':      c.beginPath(); c.moveTo(pts[0].x, pts[0].y); c.quadraticCurveTo(pts[2].x, pts[2].y - amp * 2.5, pts[4].x, pts[4].y); c.stroke(); break;
     case 'zigzag':   poly(c, out.map((p, k) => ({ x: p.x, y: p.y + (k % 2 ? amp : -amp) }))); break;
     case 'bar':      { const x0 = Math.min(...pts.map(p => p.x)), x1 = Math.max(...pts.map(p => p.x)), y = pts.reduce((a, p) => a + p.y, 0) / pts.length; rect(c, x0, y - amp, x1 - x0, amp * 2); break; }
     case 'lines3':   { const x0 = Math.min(...pts.map(p => p.x)), x1 = Math.max(...pts.map(p => p.x)), y = pts.reduce((a, p) => a + p.y, 0) / pts.length; [-1, 0, 1].forEach(k => line(c, { x: x0, y: y + k * amp * 1.2 }, { x: x1, y: y + k * amp * 1.2 })); break; }
