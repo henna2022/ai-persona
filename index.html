@@ -89,10 +89,14 @@
   </div>
 </section>
 
+<script src="collect.js"></script>
+<script>RaimCollect.init('persona');</script>
+
 <script type="module">
 import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs";
 const WASM  = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
 const MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+
 
 // 표정 판정 기준값(0~1). 잘 안 잡히면 이 숫자만 조절. 주소 뒤에 ?debug 를 붙이면 현재 값이 화면에 보임.
 const T = { angry: 0.35, smile: 0.4, jawOpen: 0.4, browUp: 0.25 };
@@ -330,6 +334,13 @@ function frame() {
 
 function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); }
 
+// 완성본이 떴을 때 이용 1회로 셉니다. ?img= 테스트는 세지 않습니다.
+// 나가는 것은 "페르소나를 한 번 썼다"는 표시뿐입니다. 얼굴 사진도, 좌표도, 기기 번호도 보내지 않습니다.
+function countUse() {
+  if (imgSrc || !window.RaimCollect) return;
+  RaimCollect.record();
+}
+
 async function shoot() {
   if (!lm) return alert('얼굴을 찾지 못했어요. 화면에 얼굴을 맞춰주세요.');
   const h = $('hint'); h.classList.add('big');
@@ -345,6 +356,7 @@ async function shoot() {
   $('pic').src = rc.toDataURL('image/png');
   show('gen'); await new Promise(r => setTimeout(r, 2000));   // 생성 중 안내 2초
   show('result');
+  countUse();
 }
 
 async function openSource() {
