@@ -10,15 +10,20 @@
   @font-face { font-family: Paperlogy; font-weight: 700; font-display: swap; src: url(https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2) format('woff2'); }
   :root { --text: #191f28; --sub: #4e5968; --muted: #8b95a1; --surface: #f2f4f6; --blue: #3182f6; --blue-press: #1b64da; }
   * { box-sizing: border-box; margin: 0; }
-  html, body { height: 100%; background: #fff; color: var(--text); font-family: Paperlogy, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: #fff; color: var(--text); font-family: Paperlogy, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; word-break: keep-all; }
   .screen { position: fixed; inset: 0; display: none; flex-direction: column; padding-top: env(safe-area-inset-top, 0); }
   .screen.on { display: flex; }
-  button { font: inherit; font-weight: 700; font-size: 17px; border: 0; border-radius: 16px; padding: 17px 20px; cursor: pointer; touch-action: manipulation; transition: transform .08s, background .12s; }
-  button:active { transform: scale(.98); }
+  button { font: inherit; font-weight: 700; font-size: 17px; line-height: 20px; border: 0; border-radius: 16px; padding: 17px 20px; cursor: pointer; touch-action: manipulation; transition: transform .08s, background .12s, opacity .15s; }
+  button:active:not(:disabled) { transform: scale(.98); }
   .primary { background: var(--blue); color: #fff; }
   .primary:active { background: var(--blue-press); }
   .secondary { background: var(--surface); color: var(--text); }
   button:disabled { background: var(--surface); color: var(--muted); }
+  .primary:disabled { background: var(--blue); color: #fff; opacity: .4; }   /* 기다리는 동안에도 주 버튼이 주 버튼으로 보이게 */
+  .screen.fade.on { animation: fadein .35s ease-out; }
+  @keyframes fadein { from { opacity: 0; } }
+  .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0)); transform: translateX(-50%) translateY(8px); padding: 10px 16px; border-radius: 999px; background: rgba(25,31,40,.9); color: #fff; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+  .toast.on { opacity: 1; transform: translateX(-50%); }
   .bar { display: flex; gap: 10px; padding: 12px 20px calc(16px + env(safe-area-inset-bottom, 0)); background: #fff; }
   .bar button { flex: 1; }
 
@@ -29,27 +34,29 @@
   #start h1 { font-size: 30px; font-weight: 700; }
   #start h2 { font-size: 26px; font-weight: 700; line-height: 1.35; }
   #start p { font-size: 16px; line-height: 1.6; color: var(--sub); }
-  #start small { display: block; font-size: 13px; line-height: 1.5; color: var(--muted); text-align: center; margin-bottom: 4px; }
+  #start small { display: block; font-size: 14px; line-height: 1.5; color: var(--sub); text-align: center; margin-bottom: 4px; }
+  #start .err { display: none; font-size: 14px; line-height: 1.5; color: #c93b32; text-align: center; margin: 6px 0 8px; }
+  #start .err.on { display: block; }
   #start .bar { padding-left: 0; padding-right: 0; }
 
   /* 카메라 */
   #cam { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-  .stage { position: relative; display: flex; width: min(100% - 32px, 100vh - 200px); aspect-ratio: 1; margin: auto; border-radius: 24px; overflow: hidden; background: #000; }
+  .stage { position: relative; display: flex; width: min(100% - 32px, 100vh - 240px - env(safe-area-inset-bottom, 0)); aspect-ratio: 1; margin: auto; border-radius: 24px; overflow: hidden; background: #000; }
   #view { flex: 1; min-height: 0; width: 100%; object-fit: cover; }
-  #hint { position: absolute; top: 0; left: 0; right: 0; padding: 18px; text-align: center; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.5); font-size: 16px; font-weight: 600; pointer-events: none; }
-  #hint.big { font-size: 120px; top: 35%; }
+  #hint { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 28px); padding: 8px 14px; border-radius: 999px; background: rgba(0,0,0,.45); text-align: center; color: #fff; font-size: 16px; font-weight: 600; pointer-events: none; }
+  #hint:empty { display: none; }
+  #hint.big { font-size: 120px; line-height: 1; top: 50%; transform: translate(-50%, -50%); padding: 0; background: none; text-shadow: 0 2px 12px rgba(0,0,0,.5); }
+  .stage-wrap { position: relative; width: min(100% - 32px, 100vh - 240px - env(safe-area-inset-bottom, 0)); margin: auto; flex-shrink: 0; }   /* 무대와 그 아래 안내문을 한 덩어리로 */
+  .stage-wrap .under { position: absolute; top: 100%; left: 0; right: 0; margin-top: 14px; padding: 0 8px; text-align: center; font-size: 15px; line-height: 1.5; color: var(--sub); }
+  .spacer { flex-shrink: 0; height: calc(82px + env(safe-area-inset-bottom, 0)); }   /* 촬영 화면의 버튼 줄과 같은 높이 */
 
   /* 생성 중 */
-  #gen { align-items: center; justify-content: center; gap: 22px; font-size: 20px; font-weight: 700; text-align: center; padding: 24px; }
-  .spin { width: 44px; height: 44px; border: 4px solid var(--surface); border-top-color: var(--blue); border-radius: 50%; animation: spin .9s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .dots::after { content: ''; animation: dots 1.2s steps(4) infinite; }
-  @keyframes dots { to { content: '...'; } }
+  #gen .robot-stage { position: relative; width: 100%; aspect-ratio: 1; border-radius: 24px; overflow: hidden; background: #2c3036; }
+  #robot-canvas { display: block; width: 100%; height: 100%; }
 
   /* 결과 */
-  .card { display: flex; width: min(100% - 32px, 100vh - 240px); aspect-ratio: 1; margin: auto; padding: 12px; border-radius: 24px; background: var(--surface); }
-  #pic { flex: 1; min-height: 0; width: 100%; object-fit: contain; border-radius: 16px; }
-  .note { padding: 12px 24px 0; text-align: center; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .card { display: flex; width: 100%; aspect-ratio: 1; border-radius: 24px; overflow: hidden; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 10px 28px rgba(0,0,0,.07); }   /* 그림이 주인공: 액자 없이 종이 한 장처럼 */
+  #pic { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
 </style>
 </head>
 <body>
@@ -60,6 +67,7 @@
     <p>카메라가 얼굴을 찾아서 눈, 코, 입을<br>도형으로 바꿔 그려요.<br>표정에 따라 머리 위 표시가 달라져요.</p>
   </div>
   <small>카메라 영상은 이 기기 안에서만 처리되고<br>어디에도 전송되거나 저장되지 않아요.</small>
+  <p id="err" class="err" role="alert"></p>
   <div class="bar"><button id="go" class="primary" disabled>불러오는 중…</button></div>
 </section>
 
@@ -67,27 +75,33 @@
   <video id="cam" playsinline muted autoplay></video>
   <div class="stage">
     <canvas id="view"></canvas>
-    <div id="hint"></div>
+    <div id="hint" role="status" aria-live="polite"></div>
   </div>
   <div class="bar">
-    <button id="shuffle" class="secondary">얼굴 고르기</button>
+    <button id="shuffle" class="secondary">다른 얼굴로</button>
     <button id="shoot" class="primary">촬영하기</button>
   </div>
 </section>
 
 <section id="gen" class="screen">
-  <div class="spin"></div>
-  <p>AI가 페르소나를 생성하고 있어요<span class="dots"></span></p>
+  <div class="stage-wrap">
+    <div class="robot-stage"><canvas id="robot-canvas" role="img" aria-label="엑시드로와 협동로봇이 종이에 얼굴을 그리는 애니메이션"></canvas></div>
+    <p id="robot-note" class="under" role="status" aria-live="polite">촬영 완료! 로봇이 그릴 준비를 해요</p>
+  </div>
+  <div class="spacer"></div>
 </section>
 
-<section id="result" class="screen">
-  <div class="card"><img id="pic" alt="완성된 얼굴 그림"></div>
-  <p class="note">얼굴 사진은 저장되지 않아요. 이 그림은 기기 안에서만 만들어졌고, 다시 하기를 누르면 바로 지워져요.</p>
+<section id="result" class="screen fade">
+  <div class="stage-wrap">
+    <div class="card"><img id="pic" alt="완성된 얼굴 그림"></div>
+    <p class="under">얼굴 영상은 저장되지 않아요. 그림만 남아요.</p>
+  </div>
   <div class="bar">
     <button id="again" class="secondary">다시 하기</button>
-    <button id="save" class="primary">사진 저장</button>
+    <button id="save" class="primary">그림 저장</button>
   </div>
 </section>
+<div id="toast" class="toast" role="status"></div>
 
 <script src="collect.js"></script>
 <script>RaimCollect.init('persona');</script>
@@ -112,6 +126,7 @@ const LIP_IN  = [78,95,88,178,87,14,317,402,318,324,308,415,310,311,312,13,82,81
 const OVAL = [10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
 
 const $ = id => document.getElementById(id);
+CanvasRenderingContext2D.prototype.roundRect ??= function (x, y, w, h) { this.rect(x, y, w, h); };   // iOS 15 이하
 const params = new URLSearchParams(location.search);
 const debug = params.has('debug');
 const imgSrc = params.get('img');           // ?img=사진경로 → 카메라 대신 사진으로 테스트
@@ -275,14 +290,409 @@ function mood() {
 
 function drawAll(c, kind) {
   const g = geom();
+  c.tag?.('cobot');                                   // 얼굴 틀 + 머리 위 표시 = 협동로봇
   drawFace(c, g);
+  c.tag?.('axi');                                     // 눈썹·눈·코·입 = 엑시드로
   drawBrow(c, look.browR, [70, 63, 105, 66, 107], g.h * 0.04, look.browSzR);
   drawBrow(c, look.browL, [336, 296, 334, 293, 300], g.h * 0.04, look.browSzL);
   drawEye(c, look.eyeR, mid(P(33), P(133)), dist(P(33), P(133)) * 0.4 * look.eyeSzR);
   drawEye(c, look.eyeL, mid(P(362), P(263)), dist(P(362), P(263)) * 0.4 * look.eyeSzL);
   drawNose(c, g);
   drawMouth(c, g);
+  c.tag?.('cobot');
   drawIcon(c, kind, g.top.x, g.top.y - g.h * 0.22, g.w * 0.12);
+}
+
+// ---- 로봇 애니메이션용 선 녹화 ----
+// drawAll 을 가짜 컨텍스트로 한 번 돌려서 선 목록을 만든다.
+// 결과: [{ who: 'axi'|'cobot', fill: bool, pts: [{x,y}, ...] }]  좌표는 완성본 기준 0~1 (좌우 반전 포함)
+function recordStrokes(kind, crop) {
+  const S = crop.S, strokes = [];
+  let who = 'axi', cur = [];
+  const map = p => ({ x: 1 - (p.x - crop.ox) / S, y: (p.y - crop.oy) / S });
+  const last = () => cur[cur.length - 1];
+  const flush = fill => { if (cur.length) strokes.push({ who, fill: !!fill, pts: cur.map(map) }); cur = []; };
+  const sample = (n, f) => { for (let i = 1; i <= n; i++) cur.push(f(i / n)); };
+  const rec = {
+    tag(w) { flush(); who = w; },
+    beginPath() { flush(); },
+    moveTo(x, y) { flush(); cur.push({ x, y }); },
+    lineTo(x, y) { cur.push({ x, y }); },
+    closePath() { if (cur.length) cur.push({ ...cur[0] }); },
+    stroke() { flush(); },
+    fill() { flush(true); },
+    strokeRect(x, y, w, h) { flush(); cur = [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }, { x, y }]; flush(); },
+    arc(x, y, r, a0, a1) { cur.push({ x: x + Math.cos(a0) * r, y: y + Math.sin(a0) * r }); sample(24, t => { const a = a0 + (a1 - a0) * t; return { x: x + Math.cos(a) * r, y: y + Math.sin(a) * r }; }); },
+    ellipse(x, y, rx, ry, rot, a0, a1) { cur.push({ x: x + Math.cos(a0) * rx, y: y + Math.sin(a0) * ry }); sample(32, t => { const a = a0 + (a1 - a0) * t; return { x: x + Math.cos(a) * rx, y: y + Math.sin(a) * ry }; }); },
+    quadraticCurveTo(cx, cy, x, y) { const p = last(); sample(12, t => ({ x: (1 - t) ** 2 * p.x + 2 * (1 - t) * t * cx + t * t * x, y: (1 - t) ** 2 * p.y + 2 * (1 - t) * t * cy + t * t * y })); },
+    bezierCurveTo(x1, y1, x2, y2, x, y) { const p = last(); sample(16, t => { const u = 1 - t; return { x: u ** 3 * p.x + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t ** 3 * x, y: u ** 3 * p.y + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t ** 3 * y }; }); },
+  };
+  drawAll(rec, kind);
+  flush();
+  return strokes;
+}
+
+// 로봇이 그리는 애니메이션. strokes 를 순서대로 그리고 끝나면 resolve. (장면 연출은 아래 robotDraw 에서)
+async function robotDraw(strokes) {
+  const canvas = document.getElementById('robot-canvas');
+  const note = document.getElementById('robot-note');
+  const size = canvas.getBoundingClientRect().width;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.height = Math.max(1, Math.round(size * dpr));
+  const c = canvas.getContext('2d');
+  const paper = document.createElement('canvas');
+  const side = 0.34, left = 0.33, topA = 0.15, topB = 0.49;
+  paper.width = paper.height = Math.max(1, canvas.width);
+  const ink = paper.getContext('2d');
+  ink.scale(paper.width, paper.height);
+  ink.lineWidth = 0.011;
+  ink.lineCap = ink.lineJoin = 'round';
+  ink.strokeStyle = ink.fillStyle = '#111';
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;   // 움직임 줄이기: 완성 장면만 보여줌
+  const ease = t => t * t * (3 - 2 * t);
+  const mix = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  const distance = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+  const onPaper = (p, top) => ({ x: left + p.x * side, y: top + p.y * side });
+  const axiHome = { x: 0.69, y: 0.105 }, cobotHome = { x: 0.78, y: 0.70 };
+
+  // 채운 점은 중심부터 작게 돌며 칠한다.
+  function prepare(stroke) {
+    const outline = stroke.pts.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (!outline.length) return null;
+    let pts = outline;
+    if (stroke.fill && outline.length > 2) {
+      const edge = outline.slice();
+      if (distance(edge[0], edge[edge.length - 1]) < 0.00001) edge.pop();
+      const center = edge.reduce((a, p) => ({ x: a.x + p.x / edge.length, y: a.y + p.y / edge.length }), { x: 0, y: 0 });
+      pts = [center];
+      for (let i = 1; i <= edge.length * 5; i++) {
+        pts.push(mix(center, edge[i % edge.length], i / (edge.length * 5)));
+      }
+    }
+    const lengths = [0];
+    for (let i = 1; i < pts.length; i++) lengths.push(lengths[i - 1] + distance(pts[i - 1], pts[i]));
+    return { pts, outline, fill: stroke.fill, lengths, length: lengths[lengths.length - 1] };
+  }
+
+  function pointAt(s, length) {
+    for (let i = 1; i < s.pts.length; i++) {
+      if (s.lengths[i] >= length) {
+        const span = s.lengths[i] - s.lengths[i - 1];
+        return mix(s.pts[i - 1], s.pts[i], span ? (length - s.lengths[i - 1]) / span : 0);
+      }
+    }
+    return s.pts[s.pts.length - 1];
+  }
+
+  const events = [];
+  function schedule(who, start, duration, top, home) {
+    const paths = strokes.filter(s => s.who === who).map(prepare).filter(Boolean);
+    const n = paths.length;
+    if (!n) return;
+    const travel = Math.min(65, duration * 0.18 / n);
+    const budget = duration - travel * n;
+    const minimum = Math.min(120, budget / n);
+    const total = paths.reduce((sum, s) => sum + s.length, 0);
+    let time = start, previous = home;
+    paths.forEach(s => {
+      const first = onPaper(s.pts[0], top);
+      events.push({ who, start: time, end: time + travel, from: previous, to: first });
+      time += travel;
+      const ms = minimum + (budget - minimum * n) * (total ? s.length / total : 1 / n);
+      events.push({ who, start: time, end: time + ms, s, top, painted: 0, done: false });
+      time += ms;
+      previous = onPaper(s.pts[s.pts.length - 1], top);
+    });
+  }
+  schedule('axi', 1000, 4000, topA, axiHome);
+  schedule('cobot', 6000, 3500, topB, cobotHome);
+
+  // 이번 프레임에서 지나간 부분만 잉크에 추가한다.
+  function addInk(event, progress) {
+    const s = event.s, end = s.length * progress, begin = event.painted;
+    ink.save();
+    if (s.fill && s.outline.length > 2) {
+      ink.beginPath();
+      s.outline.forEach((p, i) => i ? ink.lineTo(p.x, p.y) : ink.moveTo(p.x, p.y));
+      ink.closePath();
+      ink.clip();
+    }
+    if (end > begin) {
+      const p = pointAt(s, begin);
+      ink.beginPath(); ink.moveTo(p.x, p.y);
+      for (let i = 1; i < s.pts.length; i++) {
+        if (s.lengths[i] > begin && s.lengths[i] < end) ink.lineTo(s.pts[i].x, s.pts[i].y);
+      }
+      const q = pointAt(s, end);
+      ink.lineTo(q.x, q.y); ink.stroke();
+    }
+    if (progress === 1) {
+      if (s.fill && s.outline.length > 2) {
+        ink.beginPath();
+        s.outline.forEach((p, i) => i ? ink.lineTo(p.x, p.y) : ink.moveTo(p.x, p.y));
+        ink.closePath(); ink.fill();
+      } else if (!s.length) {
+        ink.beginPath(); ink.arc(s.pts[0].x, s.pts[0].y, 0.0035, 0, Math.PI * 2); ink.fill();
+      }
+      event.done = true;
+    }
+    ink.restore();
+    event.painted = end;
+  }
+
+  function rect(x, y, w, h, color) {
+    c.fillStyle = color; c.fillRect(x, y, w, h);
+  }
+  function line(a, b, width, color) {
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y);
+    c.lineWidth = width; c.strokeStyle = color; c.lineCap = 'round'; c.stroke();
+  }
+  function circle(p, r, color) {
+    c.beginPath(); c.arc(p.x, p.y, r, 0, Math.PI * 2); c.fillStyle = color; c.fill();
+  }
+  function shadow() {
+    c.shadowColor = 'rgba(0,0,0,.28)';
+    c.shadowBlur = size * dpr * 0.012;
+    c.shadowOffsetY = size * dpr * 0.007;
+  }
+
+  let carriage = axiHome;
+  function drawAxi(p, down, dt) {
+    carriage = p;
+    const { x } = carriage;
+    const y = p.y - 0.032, penY = p.y;
+    c.save();
+    // 높이에 따른 그림자를 한 번에 칠한다.
+    c.save(); shadow(); c.beginPath();
+    c.rect(0.716, 0.076, 0.031, 0.47);
+    for (const end of [0.034, 0.531]) c.roundRect(0.713, end + 0.006, 0.037, 0.012, 0.003);
+    c.rect(0.265, y - 0.006, 0.486, 0.036);
+    c.rect(0.260, y - 0.013, 0.034, 0.05);
+    c.rect(0.716, y - 0.014, 0.043, 0.052);
+    c.rect(x - 0.013, y - 0.004, 0.05, 0.032);
+    c.fillStyle = 'rgba(0,0,0,.32)'; c.fill(); c.restore();
+
+    // 검정 압출 레일과 엔드캡.
+    const rail = c.createLinearGradient(0.71, 0, 0.741, 0);
+    rail.addColorStop(0, '#454b54'); rail.addColorStop(0.3, '#2f343b'); rail.addColorStop(1, '#1b1d21');
+    rect(0.71, 0.07, 0.031, 0.47, rail);
+    for (const slot of [0.719, 0.732]) rect(slot, 0.075, 0.001, 0.46, '#3a3e45');
+    line({ x: 0.711, y: 0.539 }, { x: 0.711, y: 0.071 }, 0.001, '#5a5f68');
+    line({ x: 0.711, y: 0.071 }, { x: 0.74, y: 0.071 }, 0.001, '#5a5f68');
+    rect(0.740, 0.071, 0.001, 0.469, '#14161a');
+    rect(0.71, 0.539, 0.031, 0.001, '#14161a');
+    const block = (bx, by, w, h) => {
+      const face = c.createLinearGradient(bx, by, bx + w, by + h);
+      face.addColorStop(0, '#565c65'); face.addColorStop(0.22, '#2f343b'); face.addColorStop(1, '#1b1d21');
+      c.beginPath(); c.roundRect(bx, by, w, h, 0.003);
+      c.fillStyle = face; c.fill();
+      line({ x: bx + 0.003, y: by + 0.0015 }, { x: bx + w - 0.003, y: by + 0.0015 }, 0.001, '#5a5f68');
+    };
+    for (const end of [0.034, 0.531]) {
+      block(0.707, end, 0.037, 0.012);
+      circle({ x: 0.7255, y: end + 0.006 }, 0.002, '#9aa0a8');
+      circle({ x: 0.726, y: end + 0.0065 }, 0.001, '#2f343b');
+    }
+
+    // 은색 크로스바의 홈과 모서리.
+    const bar = c.createLinearGradient(0, y - 0.018, 0, y + 0.018);
+    bar.addColorStop(0, '#ffffff'); bar.addColorStop(0.5, '#d5d8dd'); bar.addColorStop(1, '#9ea3ab');
+    rect(0.253, y - 0.018, 0.486, 0.036, bar);
+    for (const slot of [-0.007, 0.006]) {
+      rect(0.257, y + slot, 0.472, 0.0015, '#8f949c');
+      rect(0.257, y + slot + 0.0015, 0.472, 0.001, '#ffffff');
+    }
+    rect(0.253, y + 0.017, 0.486, 0.001, '#737982');
+    block(0.248, y - 0.025, 0.034, 0.05);
+    block(0.704, y - 0.026, 0.043, 0.052);
+    for (const bx of [0.256, 0.738]) {
+      circle({ x: bx, y: y - 0.018 }, 0.002, '#9aa0a8');
+      circle({ x: bx, y: y + 0.018 }, 0.002, '#454b54');
+    }
+
+    // 리본은 바를 따라 빼고 종이 위에서는 가린다.
+    c.save(); c.beginPath();
+    c.rect(0, 0, 1, 1); c.rect(left, topA, side, side);
+    c.clip('evenodd');
+    c.beginPath(); c.moveTo(x + 0.025, y);
+    c.bezierCurveTo(0.72, y, 0.77, y - 0.015, 0.727, y);
+    c.lineCap = 'round';
+    c.lineWidth = 0.007; c.strokeStyle = '#1b1d21'; c.stroke();
+    c.lineWidth = 0.004; c.strokeStyle = '#454b54'; c.stroke();
+    c.save(); c.translate(-0.0007, -0.001);
+    c.lineWidth = 0.001; c.strokeStyle = '#9aa0a8';
+    c.beginPath(); c.moveTo(x + 0.025, y);
+    c.bezierCurveTo(0.72, y, 0.77, y - 0.015, 0.727, y); c.stroke();
+    c.restore(); c.restore();
+
+    // 캐리지 앞쪽으로 나온 원통 홀더와 펜 끝.
+    block(x - 0.025, y - 0.016, 0.05, 0.032);
+    block(x - 0.019, y - 0.011, 0.028, 0.009);
+    rect(x - 0.014, y - 0.009, 0.008, 0.003, '#f4f5f7');
+    const holder = c.createLinearGradient(x - 0.007, 0, x + 0.007, 0);
+    holder.addColorStop(0, '#24282e'); holder.addColorStop(0.4, '#565c65'); holder.addColorStop(1, '#2f343b');
+    rect(x - 0.007, y + 0.016, 0.014, penY - (y + 0.016), holder);
+    const ring = c.createLinearGradient(x - 0.01, penY - 0.01, x + 0.01, penY + 0.01);
+    ring.addColorStop(0, '#f4f5f7'); ring.addColorStop(0.45, '#9aa0a8'); ring.addColorStop(1, '#454b54');
+    circle(carriage, 0.011, ring);
+    const radius = down ? 0.0085 : 0.010;
+    const cap = c.createRadialGradient(x - 0.003, penY - 0.004, 0, x, penY, radius);
+    cap.addColorStop(0, '#6b7078'); cap.addColorStop(1, '#3a3f47');
+    circle(carriage, radius, cap);
+    c.beginPath(); c.arc(x, penY, radius * 0.78, Math.PI * 1.07, Math.PI * 1.65);
+    c.lineWidth = 0.0008; c.strokeStyle = '#9aa0a8'; c.stroke();
+    circle(carriage, 0.0025, down ? '#111' : '#9299a2');
+    if (!down) circle({ x: x + 0.015, y: y + 0.007 }, 0.003, '#73bda9');
+    c.restore();
+  }
+
+  // 링크 축을 따라 원통 명암과 심도 함께 회전한다.
+  function cobotLink(a, b, width) {
+    if (b.x < a.x) [a, b] = [b, a];                       // 밝은 면이 항상 위쪽(관절·그림자와 같은 광원)
+    const length = distance(a, b), r = width / 2;
+    c.save();
+    c.translate(a.x, a.y); c.rotate(Math.atan2(b.y - a.y, b.x - a.x));
+    const body = c.createLinearGradient(0, -r, 0, r);
+    body.addColorStop(0, '#ffffff');
+    body.addColorStop(0.45, '#f1f2f4');
+    body.addColorStop(1, '#b6bbc3');
+    line({ x: 0, y: 0 }, { x: length, y: 0 }, width, body);
+    line({ x: 0, y: r - 0.001 }, { x: length, y: r - 0.001 }, 0.002, '#9aa0a8');
+    line({ x: 0, y: -r * 0.62 }, { x: length, y: -r * 0.62 }, width * 0.18, 'rgba(255,255,255,.7)');
+    for (const x of [width, length - width]) {
+      c.beginPath(); c.moveTo(x, -r + 0.001);
+      c.bezierCurveTo(x + r * 0.32, -r * 0.45, x + r * 0.32, r * 0.45, x, r - 0.001);
+      c.lineWidth = 0.0015; c.strokeStyle = '#c3c8cf'; c.stroke();
+    }
+    c.restore();
+  }
+
+  function cobotJoint(p, r) {
+    const body = c.createRadialGradient(p.x - r * 0.35, p.y - r * 0.4, r * 0.08, p.x, p.y, r);
+    body.addColorStop(0, '#ffffff'); body.addColorStop(0.65, '#f4f5f7'); body.addColorStop(1, '#c9ccd1');
+    circle(p, r, body);
+    const cap = c.createRadialGradient(p.x - r * 0.2, p.y - r * 0.25, 0, p.x, p.y, r * 0.72);
+    cap.addColorStop(0, '#565c65'); cap.addColorStop(1, '#2f343b');
+    circle(p, r * 0.75, '#e9ecef');
+    circle(p, r * 0.70, cap);
+    c.beginPath(); c.arc(p.x, p.y, r * 0.56, Math.PI * 1.07, Math.PI * 1.65);
+    c.lineWidth = r * 0.07; c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineCap = 'round'; c.stroke();
+    circle(p, r * 0.065, '#9aa0a8');
+  }
+
+  // 베이스는 벨트 밖, 대기 팔은 종이 오른쪽.
+  function drawCobot(p, down) {
+    const base = { x: 0.62, y: 0.915 }, upper = 0.29, lower = 0.24;
+    const dx = p.x - base.x, dy = p.y - base.y;
+    const d = Math.max(0.0001, Math.min(upper + lower - 0.0001, Math.hypot(dx, dy)));
+    const angle = Math.atan2(dy, dx) + Math.acos(Math.max(-1, Math.min(1, (upper * upper + d * d - lower * lower) / (2 * upper * d))));
+    const elbow = { x: base.x + upper * Math.cos(angle), y: base.y + upper * Math.sin(angle) };
+    const shoulderR = 0.045 * 1.12, elbowR = 0.036 * 1.06, wristR = 0.024;
+    const wrist = mix(p, elbow, 0.2), flangeR = 0.075;
+    const offset = (q, h) => ({ x: q.x + h, y: q.y + h });
+    const sb = offset(base, 0.022), se = offset(elbow, 0.014), sw = offset(wrist, 0.006);
+    c.save();
+    // 겹치는 그림자를 한 실루엣으로 묶는다.
+    c.save(); shadow(); c.beginPath();
+    const disk = (q, r) => { c.moveTo(q.x + r, q.y); c.arc(q.x, q.y, r, 0, Math.PI * 2); };
+    const capsule = (a, b, r) => {
+      const t = Math.atan2(b.y - a.y, b.x - a.x);
+      c.moveTo(a.x + Math.cos(t - Math.PI / 2) * r, a.y + Math.sin(t - Math.PI / 2) * r);
+      c.arc(b.x, b.y, r, t - Math.PI / 2, t + Math.PI / 2);
+      c.arc(a.x, a.y, r, t + Math.PI / 2, t + Math.PI * 1.5); c.closePath();
+    };
+    capsule(sb, se, 0.029); disk(se, elbowR);                // 플랜지·어깨 원은 어차피 가려져 뺌
+    capsule(se, sw, 0.023); disk(sw, wristR);
+    capsule(sw, offset(p, 0.006), 0.016); disk(offset(p, 0.006), 0.018);
+    c.fillStyle = 'rgba(0,0,0,.32)'; c.fill(); c.restore();
+    circle(base, flangeR, '#3f444c');
+    const body = c.createRadialGradient(base.x - 0.02, base.y - 0.025, 0.004, base.x, base.y, 0.06);
+    body.addColorStop(0, '#ffffff'); body.addColorStop(0.55, '#f1f2f4'); body.addColorStop(1, '#b6bbc3');
+    circle(base, 0.06, body);
+    for (let i = 0; i < 6; i++) {
+      const t = i * Math.PI / 3, q = { x: base.x + Math.cos(t) * 0.0675, y: base.y + Math.sin(t) * 0.0675 };
+      circle(q, 0.003, '#5b6169'); circle({ x: q.x - 0.001, y: q.y - 0.001 }, 0.0015, '#fff');
+    }
+    c.beginPath(); disk(sb, shoulderR); c.fillStyle = 'rgba(0,0,0,.25)'; c.fill();   // 어깨가 플랜지에 닿는 접촉 그림자
+    cobotLink(base, elbow, 0.058);
+    cobotJoint(base, shoulderR);
+    cobotLink(elbow, wrist, 0.046);
+    cobotJoint(elbow, elbowR);
+    cobotLink(wrist, p, 0.032);                          // 손목과 툴 사이 짧은 링크
+    cobotJoint(wrist, wristR);
+    cobotJoint(p, 0.018);
+    circle(p, 0.006, down ? '#111' : '#9299a2');
+    circle({ x: p.x - 0.0015, y: p.y - 0.0015 }, 0.0015, '#fff');
+    c.restore();
+  }
+
+  const messages = ['촬영 완료! 로봇이 그릴 준비를 해요', '펜 플로터 엑시드로가 눈, 코, 입을 그려요', '협동로봇에게 종이를 옮기고 있어요', '협동로봇이 얼굴 틀과 표정을 그려요', '완성!'];
+  await new Promise(resolve => {
+    let frame = 0, start = null, last = 0, phase = -1;
+    function tick(now) { try { tickBody(now); } catch (e) { console.error(e); resolve(); } }   // 그리다 실패해도 완성본은 보여준다
+    function tickBody(now) {
+      if (start === null) start = now;
+      const time = reduced ? 10000 : Math.min(10950, now - start);
+      const dt = Math.max(1, time - last); last = time;
+      const nextPhase = time < 1000 ? 0 : time < 5000 ? 1 : time < 6000 ? 2 : time < 9500 ? 3 : 4;
+      if (phase !== nextPhase) { phase = nextPhase; note.textContent = messages[phase]; }
+      const transfer = ease(Math.max(0, Math.min(1, (time - 5200) / 800)));
+      const top = topA + (topB - topA) * transfer;
+      let axi = { ...axiHome }, cobot = { ...cobotHome }, axiDown = false, cobotDown = false;
+      for (const event of events) {
+        if (time < event.start) break;
+        const progress = Math.min(1, (time - event.start) / (event.end - event.start));
+        const p = event.s ? onPaper(pointAt(event.s, event.s.length * progress), event.top) : mix(event.from, event.to, ease(progress));
+        if (event.s && !event.done) addInk(event, progress);
+        if (event.who === 'axi') { axi = p; axiDown = !!event.s && progress < 1; }
+        else { cobot = p; cobotDown = !!event.s && progress < 1; }
+      }
+      if (time >= 5000) { axi = mix(axi, axiHome, ease(Math.min(1, (time - 5000) / 200))); axiDown = false; }
+      if (time >= 9500) { cobot = mix(cobot, cobotHome, ease(Math.min(1, (time - 9500) / 300))); cobotDown = false; }
+      c.setTransform(canvas.width, 0, 0, canvas.height, 0, 0);
+      rect(0, 0, 1, 1, '#2c3036');
+      // 레일 상단과 플랜지 하단을 모두 담는 제한 줌.
+      const intro = reduced ? 1 : ease(Math.min(1, time / 300));
+      const zoom = 1 + 0.025 * intro;
+      const panX = -0.0125 * intro, panY = (-0.015 - 0.004 * transfer) * intro;
+      c.setTransform(canvas.width * zoom, 0, 0, canvas.height * zoom, canvas.width * panX, canvas.height * panY);
+      for (let v = 0.1; v < 1; v += 0.25) {
+        line({ x: v, y: 0 }, { x: v, y: 1 }, 0.003, '#34383f');
+        line({ x: 0, y: v }, { x: 1, y: v }, 0.003, '#34383f');
+      }
+      rect(0.28, 0.025, 0.44, 0.82, '#17191d');
+      c.save(); c.beginPath(); c.rect(0.28, 0.025, 0.44, 0.82); c.clip();
+      const offset = ((topB - topA) * transfer) % 0.024;
+      for (let y = 0.001 + offset; y < 0.845; y += 0.024) rect(0.28, y, 0.44, 0.001, '#24272c');
+      c.restore();
+      [0.264, 0.72].forEach(x => {
+        rect(x, 0.025, 0.016, 0.825, '#c9ccd1');
+        rect(x + 0.003, 0.025, 0.003, 0.825, '#f4f5f7');
+        for (const y of [0.05, 0.835]) circle({ x: x + 0.008, y }, 0.003, '#747c87');
+      });
+      c.save(); shadow(); rect(left, top, side, side, '#fff'); c.restore();
+      c.drawImage(paper, left, top, side, side);
+      drawAxi(axi, axiDown, dt);
+      drawCobot(cobot, cobotDown);
+      c.setTransform(canvas.width, 0, 0, canvas.height, 0, 0);
+      if (!reduced && time >= 10000) {
+        // 완성 종이로 다가가 결과 카드와 맞춘다.
+        const close = 1 - Math.pow(1 - Math.min(1, (time - 10000) / 700), 3);
+        c.globalAlpha = close; rect(0, 0, 1, 1, '#17191d'); c.globalAlpha = 1;
+        const scale = zoom + (1 / side - zoom) * close;
+        const center = mix({ x: 0.5 * zoom + panX, y: (topB + side / 2) * zoom + panY }, { x: 0.5, y: 0.5 }, close);
+        c.setTransform(canvas.width * scale, 0, 0, canvas.height * scale,
+          canvas.width * (center.x - 0.5 * scale), canvas.height * (center.y - (topB + side / 2) * scale));
+        rect(left, topB, side, side, '#fff');
+        c.drawImage(paper, left, topB, side, side);
+        c.setTransform(canvas.width, 0, 0, canvas.height, 0, 0);
+      }
+      if (time < 400) { c.globalAlpha = 1 - time / 400; rect(0, 0, 1, 1, '#fff'); c.globalAlpha = 1; }
+      if (!reduced && time < 10950) frame = requestAnimationFrame(tick);
+      else setTimeout(resolve, reduced ? 600 : 0);
+    }
+    frame = requestAnimationFrame(tick);
+  });
 }
 
 // live=true: 어둡게 깐 영상 위에 흰 선 / live=false: 흰 바탕에 검정 선 + 로고
@@ -319,7 +729,7 @@ function drawLogo(c) {                               // 우측 하단
   else { c.fillStyle = '#999'; c.font = `${cw * 0.025}px sans-serif`; c.textAlign = 'right'; c.fillText('logo.png 파일을 넣어주세요', cw - m, ch - m); c.textAlign = 'left'; }
 }
 
-let first = true;
+let first = true, counting = false, hits = 0;
 function frame() {
   if (!running) return;
   if (!imgSrc && video.videoWidth && (video.videoWidth !== W || video.videoHeight !== H)) { W = canvas.width = video.videoWidth; H = canvas.height = video.videoHeight; }
@@ -328,7 +738,12 @@ function frame() {
   lm = res.faceLandmarks[0] || null;
   if (res.faceBlendshapes[0]) for (const b of res.faceBlendshapes[0].categories) bs[b.categoryName] = (bs[b.categoryName] ?? b.score) * 0.7 + b.score * 0.3;
   render(ctx, true, mood());
-  if (!$('hint').classList.contains('big')) $('hint').textContent = lm ? '표정을 지어보세요' : '얼굴을 화면에 맞춰주세요';
+  hits = lm ? Math.min(hits + 1, 12) : Math.max(hits - 1, 0);                    // 몇 프레임 연속으로 봐야 버튼이 바뀜(깜빡임 방지)
+  if (!counting) {
+    const t = lm ? '웃거나, 놀라거나, 찡그려 보세요' : '얼굴을 화면에 맞춰주세요';
+    if ($('hint').textContent !== t) $('hint').textContent = t;
+    $('shoot').disabled = hits < 3;                                            // 얼굴을 찾았을 때만 촬영 가능
+  }
   requestAnimationFrame(frame);
 }
 
@@ -342,19 +757,23 @@ function countUse() {
 }
 
 async function shoot() {
-  if (!lm) return alert('얼굴을 찾지 못했어요. 화면에 얼굴을 맞춰주세요.');
+  if (!lm || counting) return;
+  counting = true; $('shoot').disabled = $('shuffle').disabled = true;   // 카운트다운·애니메이션 중 두 번 누르기·얼굴 바꾸기 방지
   const h = $('hint'); h.classList.add('big');
   for (let n = 3; n > 0; n--) { h.textContent = n; await new Promise(r => setTimeout(r, 1000)); }
   h.classList.remove('big');
-  if (!lm) return alert('얼굴을 찾지 못했어요. 다시 해주세요.');
+  if (!lm) { $('shuffle').disabled = false; h.textContent = '얼굴을 놓쳤어요. 다시 맞춰주세요'; setTimeout(() => counting = false, 1500); return; }   // 1.5초 뒤 안내 재개
   running = false;
+  if (!imgSrc) stopCamera();                           // 촬영이 끝나면 카메라를 바로 끈다
   const g = geom(), S = Math.min(W, H), clamp = (v, hi) => Math.max(0, Math.min(v, hi));
   const crop = { S, ox: clamp(g.cx - S / 2, W - S), oy: clamp(g.cy - S / 2, H - S) };   // 얼굴 중심 1:1
-  const rc = document.createElement('canvas'), k = Math.min(2, 1600 / S);
+  const rc = document.createElement('canvas'), k = Math.min(2, 1600 / S), kind = mood();
   rc.width = rc.height = Math.round(S * k);
-  render(rc.getContext('2d'), false, mood(), crop);
+  render(rc.getContext('2d'), false, kind, crop);
   $('pic').src = rc.toDataURL('image/png');
-  show('gen'); await new Promise(r => setTimeout(r, 2000));   // 생성 중 안내 2초
+  const strokes = recordStrokes(kind, crop);
+  if (debug) console.log('strokes', strokes);
+  show('gen'); await robotDraw(strokes);               // 로봇이 그리는 애니메이션
   show('result');
   countUse();
 }
@@ -367,7 +786,10 @@ async function openSource() {
     source.width = W = Math.round(im.naturalWidth * k); source.height = H = Math.round(im.naturalHeight * k);
     source.getContext('2d').drawImage(im, 0, 0, W, H);
   } else {
-    video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } }, audio: false });
+    stopCamera();                                       // 이전 스트림이 있으면 먼저 끊는다
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } }, audio: false });
+    video.srcObject = stream;
+    stream.getVideoTracks()[0].onended = () => { if (running) { running = false; stopCamera(); fail('카메라가 끊겼어요. 다시 시도해주세요.'); } };
     await new Promise(r => video.onloadedmetadata = r);
     await video.play();
     while (!video.videoWidth) await new Promise(r => setTimeout(r, 50));   // iOS에서 크기가 늦게 잡히는 경우 대기
@@ -378,15 +800,37 @@ async function openSource() {
 
 $('shuffle').onclick = newLook;
 $('shoot').onclick = shoot;
-$('again').onclick = () => { wipe(); show('live'); running = true; frame(); };
+$('again').onclick = async () => {
+  if ($('again').disabled) return;
+  $('again').disabled = true; running = false;         // 연타 방지, 이전 루프는 다음 프레임에 스스로 끝남
+  try {
+    wipe(); counting = false; hits = 0; $('shuffle').disabled = false; $('hint').textContent = '';
+    if (!imgSrc) { try { await openSource(); } catch { return fail('카메라를 다시 열 수 없어요. 카메라 권한을 확인한 뒤 다시 시도해주세요.'); } }
+    show('live'); running = true; first = true; frame();
+  } finally { $('again').disabled = false; }
+};
 function wipe() { $('pic').src = ''; lm = null; }   // 완성본과 얼굴 좌표를 즉시 삭제
-addEventListener('pagehide', wipe);              // 페이지를 닫거나 벗어나도 삭제
-$('save').onclick = () => { const a = document.createElement('a'); a.href = $('pic').src; a.download = `face-${Date.now()}.png`; a.click(); };
+function stopCamera() { video.srcObject?.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+addEventListener('pagehide', () => { wipe(); stopCamera(); });   // 페이지를 닫거나 벗어나도 삭제
+addEventListener('pageshow', e => { if (e.persisted) location.reload(); });   // 뒤로가기로 되살아나면 처음부터
+document.addEventListener('visibilitychange', () => { if (!document.hidden && running && video.srcObject) video.play().catch(() => {}); });
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2000); }
+function fail(msg) { show('start'); $('err').textContent = msg; $('err').classList.add('on'); $('go').disabled = false; $('go').textContent = '다시 시도'; }
+$('save').onclick = async () => {
+  const b64 = $('pic').src.split(',')[1]; if (!b64) return;
+  const bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const file = new File([bytes], `persona-${Date.now()}.png`, { type: 'image/png' });
+  if (navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file] }); } catch {} return; }   // 폰: 공유 시트에서 사진 앱에 저장
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: file.name });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  toast('다운로드를 시작했어요');
+};
 $('go').onclick = async () => {
-  $('go').disabled = true; $('go').textContent = '카메라 여는 중…';
+  $('go').disabled = true; $('go').textContent = '카메라 여는 중…'; $('err').classList.remove('on');
   try { await openSource(); }
-  catch (e) { $('go').disabled = false; $('go').textContent = '시작하기'; return alert('카메라를 열 수 없어요. 브라우저의 카메라 권한을 허용해주세요.\n' + e.message); }
-  newLook(); show('live'); running = true; first = true; frame();
+  catch { return fail('카메라를 열 수 없어요. 브라우저의 카메라 권한을 허용한 뒤 다시 시도해주세요.'); }
+  $('shoot').disabled = true; newLook(); show('live'); running = true; first = true; frame();   // 얼굴을 찾으면 frame() 이 켠다
 };
 
 (async () => {
@@ -396,7 +840,7 @@ $('go').onclick = async () => {
   catch { opts.baseOptions.delegate = 'CPU'; landmarker = await FaceLandmarker.createFromOptions(fs, opts); }
   if (!imgSrc) { const warm = document.createElement('canvas'); warm.width = warm.height = 64; landmarker.detectForVideo(warm, performance.now()); }   // 예열
   $('go').disabled = false; $('go').textContent = '시작하기';
-})().catch(e => { $('go').textContent = '불러오기 실패: ' + e.message; });
+})().catch(() => { fail('얼굴 인식 모델을 불러오지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.'); $('go').onclick = () => location.reload(); });
 </script>
 </body>
 </html>
