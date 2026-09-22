@@ -389,9 +389,9 @@ async function robotDraw(strokes) {
     const paths = strokes.filter(s => s.who === who).map(prepare).filter(Boolean);
     const n = paths.length;
     if (!n) return;
-    const travel = Math.min(65, duration * 0.18 / n);
+    const travel = Math.min(300, Math.max(100, duration * 0.18 / n));   // 펜 들고 옮기는 시간(부위가 많아도 0.1초 이상)
     const budget = duration - travel * n;
-    const minimum = Math.min(120, budget / n);
+    const minimum = Math.min(300, budget / n);           // 점·짧은 선도 눈에 보이게
     const total = paths.reduce((sum, s) => sum + s.length, 0);
     let time = start, previous = home;
     paths.forEach(s => {
@@ -404,8 +404,10 @@ async function robotDraw(strokes) {
       previous = onPaper(s.pts[s.pts.length - 1], top);
     });
   }
-  schedule('axi', 1000, 4000, topA, axiHome);
-  schedule('cobot', 6000, 3500, topB, cobotHome);
+  // 타임라인(ms). 총 30초. 길이를 바꿀 땐 이 표를 고치고, 로봇 복귀 시간(0.5초·0.6초)이 다음 단계 전에 끝나는지 확인.
+  const TL = { axi: 1500, axiEnd: 16000, move: 16600, moveEnd: 18600, cobot: 18800, cobotEnd: 28000, reveal: 28800, revealEnd: 29600, end: 30000 };
+  schedule('axi', TL.axi, TL.axiEnd - TL.axi, topA, axiHome);
+  schedule('cobot', TL.cobot, TL.cobotEnd - TL.cobot, topB, cobotHome);
 
   // 이번 프레임에서 지나간 부분만 잉크에 추가한다.
   function addInk(event, progress) {
@@ -632,11 +634,11 @@ async function robotDraw(strokes) {
     function tick(now) { try { tickBody(now); } catch (e) { console.error(e); resolve(); } }   // 그리다 실패해도 완성본은 보여준다
     function tickBody(now) {
       if (start === null) start = now;
-      const time = reduced ? 10000 : Math.min(10950, now - start);
+      const time = reduced ? TL.reveal : Math.min(TL.end, now - start);
       const dt = Math.max(1, time - last); last = time;
-      const nextPhase = time < 1000 ? 0 : time < 5000 ? 1 : time < 6000 ? 2 : time < 9500 ? 3 : 4;
+      const nextPhase = time < TL.axi ? 0 : time < TL.axiEnd ? 1 : time < TL.cobot ? 2 : time < TL.cobotEnd ? 3 : 4;
       if (phase !== nextPhase) { phase = nextPhase; note.textContent = messages[phase]; }
-      const transfer = ease(Math.max(0, Math.min(1, (time - 5200) / 800)));
+      const transfer = ease(Math.max(0, Math.min(1, (time - TL.move) / (TL.moveEnd - TL.move))));
       const top = topA + (topB - topA) * transfer;
       let axi = { ...axiHome }, cobot = { ...cobotHome }, axiDown = false, cobotDown = false;
       for (const event of events) {
@@ -647,8 +649,8 @@ async function robotDraw(strokes) {
         if (event.who === 'axi') { axi = p; axiDown = !!event.s && progress < 1; }
         else { cobot = p; cobotDown = !!event.s && progress < 1; }
       }
-      if (time >= 5000) { axi = mix(axi, axiHome, ease(Math.min(1, (time - 5000) / 200))); axiDown = false; }
-      if (time >= 9500) { cobot = mix(cobot, cobotHome, ease(Math.min(1, (time - 9500) / 300))); cobotDown = false; }
+      if (time >= TL.axiEnd) { axi = mix(axi, axiHome, ease(Math.min(1, (time - TL.axiEnd) / 500))); axiDown = false; }
+      if (time >= TL.cobotEnd) { cobot = mix(cobot, cobotHome, ease(Math.min(1, (time - TL.cobotEnd) / 600))); cobotDown = false; }
       c.setTransform(canvas.width, 0, 0, canvas.height, 0, 0);
       rect(0, 0, 1, 1, '#2c3036');
       // 레일 상단과 플랜지 하단을 모두 담는 제한 줌.
@@ -675,9 +677,9 @@ async function robotDraw(strokes) {
       drawAxi(axi, axiDown, dt);
       drawCobot(cobot, cobotDown);
       c.setTransform(canvas.width, 0, 0, canvas.height, 0, 0);
-      if (!reduced && time >= 10000) {
+      if (!reduced && time >= TL.reveal) {
         // 완성 종이로 다가가 결과 카드와 맞춘다.
-        const close = 1 - Math.pow(1 - Math.min(1, (time - 10000) / 700), 3);
+        const close = 1 - Math.pow(1 - Math.min(1, (time - TL.reveal) / (TL.revealEnd - TL.reveal)), 3);
         c.globalAlpha = close; rect(0, 0, 1, 1, '#17191d'); c.globalAlpha = 1;
         const scale = zoom + (1 / side - zoom) * close;
         const center = mix({ x: 0.5 * zoom + panX, y: (topB + side / 2) * zoom + panY }, { x: 0.5, y: 0.5 }, close);
@@ -688,7 +690,7 @@ async function robotDraw(strokes) {
         c.setTransform(canvas.width, 0, 0, canvas.height, 0, 0);
       }
       if (time < 400) { c.globalAlpha = 1 - time / 400; rect(0, 0, 1, 1, '#fff'); c.globalAlpha = 1; }
-      if (!reduced && time < 10950) frame = requestAnimationFrame(tick);
+      if (!reduced && time < TL.end) frame = requestAnimationFrame(tick);
       else setTimeout(resolve, reduced ? 600 : 0);
     }
     frame = requestAnimationFrame(tick);
