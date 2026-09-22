@@ -8,7 +8,7 @@
   @font-face { font-family: Paperlogy; font-weight: 400; font-display: swap; src: url(https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2) format('woff2'); }
   @font-face { font-family: Paperlogy; font-weight: 600; font-display: swap; src: url(https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2) format('woff2'); }
   @font-face { font-family: Paperlogy; font-weight: 700; font-display: swap; src: url(https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2) format('woff2'); }
-  :root { --text: #191f28; --sub: #4e5968; --muted: #8b95a1; --surface: #f2f4f6; --blue: #3182f6; --blue-press: #1b64da; }
+  :root { --text: #202124; --sub: #494949; --muted: #707070; --surface: #faf9f6; --blue: #191f28; --blue-press: #101419; }
   * { box-sizing: border-box; margin: 0; }
   html, body { height: 100%; background: #fff; color: var(--text); font-family: Paperlogy, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; word-break: keep-all; }
   .screen { position: fixed; inset: 0; display: none; flex-direction: column; padding-top: env(safe-area-inset-top, 0); }
@@ -17,12 +17,12 @@
   button:active:not(:disabled) { transform: scale(.98); }
   .primary { background: var(--blue); color: #fff; }
   .primary:active { background: var(--blue-press); }
-  .secondary { background: var(--surface); color: var(--text); }
+  .secondary { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px #d8d7d3; }
   button:disabled { background: var(--surface); color: var(--muted); }
   .primary:disabled { background: var(--blue); color: #fff; opacity: .4; }   /* 기다리는 동안에도 주 버튼이 주 버튼으로 보이게 */
   .screen.fade.on { animation: fadein .35s ease-out; }
   @keyframes fadein { from { opacity: 0; } }
-  .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0)); transform: translateX(-50%) translateY(8px); padding: 10px 16px; border-radius: 999px; background: rgba(25,31,40,.9); color: #fff; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+  .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0)); transform: translateX(-50%) translateY(8px); padding: 10px 16px; border-radius: 999px; background: #0c2172; color: #fff; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
   .toast.on { opacity: 1; transform: translateX(-50%); }
   .bar { display: flex; gap: 10px; padding: 12px 20px calc(16px + env(safe-area-inset-bottom, 0)); background: #fff; }
   .bar button { flex: 1; }
@@ -35,7 +35,7 @@
   #start h2 { font-size: 26px; font-weight: 700; line-height: 1.35; }
   #start p { font-size: 16px; line-height: 1.6; color: var(--sub); }
   #start small { display: block; font-size: 14px; line-height: 1.5; color: var(--sub); text-align: center; margin-bottom: 4px; }
-  #start .err { display: none; font-size: 14px; line-height: 1.5; color: #c93b32; text-align: center; margin: 6px 0 8px; }
+  #start .err { display: none; font-size: 14px; line-height: 1.5; color: var(--text); text-align: center; margin: 6px 0 8px; }
   #start .err.on { display: block; }
   #start .bar { padding-left: 0; padding-right: 0; }
 
@@ -43,7 +43,7 @@
   #cam { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   .stage { position: relative; display: flex; width: min(100% - 32px, 100vh - 240px - env(safe-area-inset-bottom, 0)); aspect-ratio: 1; margin: auto; border-radius: 24px; overflow: hidden; background: #000; }
   #view { flex: 1; min-height: 0; width: 100%; object-fit: cover; }
-  #hint { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 28px); padding: 8px 14px; border-radius: 999px; background: rgba(0,0,0,.45); text-align: center; color: #fff; font-size: 16px; font-weight: 600; pointer-events: none; }
+  #hint { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 28px); padding: 8px 14px; border-radius: 999px; background: #0c2172; text-align: center; color: #fff; font-size: 16px; font-weight: 600; pointer-events: none; }
   #hint:empty { display: none; }
   #hint.big { font-size: 120px; line-height: 1; top: 50%; transform: translate(-50%, -50%); padding: 0; background: none; text-shadow: 0 2px 12px rgba(0,0,0,.5); }
   .stage-wrap { position: relative; width: min(100% - 32px, 100vh - 240px - env(safe-area-inset-bottom, 0)); margin: auto; flex-shrink: 0; }   /* 무대와 그 아래 안내문을 한 덩어리로 */
@@ -64,7 +64,7 @@
   <div class="body">
     <img id="wordmark" src="title.png" alt="AI 페르소나" onerror="this.replaceWith(Object.assign(document.createElement('h1'), { textContent: 'AI 페르소나' }))">
     <h2>내 얼굴로 만드는<br>나만의 페르소나</h2>
-    <p>카메라가 얼굴을 찾아서 눈, 코, 입을<br>도형으로 바꿔 그려요.<br>표정에 따라 머리 위 표시가 달라져요.</p>
+    <p>옆 로봇이 그리는 방식 그대로,<br>내 폰 안에서 눈, 코, 입을 도형으로 바꿔 그려요.<br>웃으면 하트, 놀라면 느낌표가 머리 위에 떠요.</p>
   </div>
   <small>카메라 영상은 이 기기 안에서만 처리되고<br>어디에도 전송되거나 저장되지 않아요.</small>
   <p id="err" class="err" role="alert"></p>
@@ -146,7 +146,7 @@ const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 function newLook() {
   look = {
     face: pick(FACES), eyeL: pick(EYES), eyeR: pick(EYES), browL: pick(BROWS), browR: pick(BROWS),
-    nose: pick(NOSES), mouth: pick(MOUTHS), neutral: pick(['heart', 'crown']),
+    nose: pick(NOSES), mouth: pick(MOUTHS), neutral: 'crown',   // 무표정은 늘 왕관: 하트는 웃을 때만
     noseSz: rnd(0.7, 1.35), mouthSz: rnd(0.75, 1.4),       // 코, 입 크기
     browSzL: rnd(0.7, 1.4), browSzR: rnd(0.7, 1.4),        // 눈썹 크기 좌우 따로
     jit: Array.from({ length: 48 }, () => rnd(0.88, 1.12)),
@@ -542,7 +542,7 @@ async function robotDraw(strokes) {
     c.beginPath(); c.arc(x, penY, radius * 0.78, Math.PI * 1.07, Math.PI * 1.65);
     c.lineWidth = 0.0008; c.strokeStyle = '#9aa0a8'; c.stroke();
     circle(carriage, 0.0025, down ? '#111' : '#9299a2');
-    if (!down) circle({ x: x + 0.015, y: y + 0.007 }, 0.003, '#73bda9');
+    if (!down) circle({ x: x + 0.015, y: y + 0.007 }, 0.003, '#4eb8c3');
     c.restore();
   }
 
